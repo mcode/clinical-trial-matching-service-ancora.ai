@@ -51,8 +51,6 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
    * date_posted: DateTimeString; - don't have a good place to map this
    * date_updated: DateTimeString; - don't have a good place to map this
    * enrollment: number; - don't think this has a mapping
-   * exclusion_text: string; - map to enrollment exclusion?
-   * inclusion_text: string; - map to enrollment inclusion?
    * primary_purpose: string; - the ResearchStudy type is currently missing primary_purpose
    * start_date: DateTimeString; - the ResearchStudy type is currently missing period
    * study_type: string; - don't have a good place to map this
@@ -88,6 +86,19 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
       text: trial.trial_phase
     }
   }
+  const includeReference = result.addContainedResource({
+    resourceType: 'Group',
+    type: 'person',
+    actual: false
+  });
+  includeReference.display = trial.inclusion_text;
+  const excludeReference = result.addContainedResource({
+    resourceType: 'Group',
+    type: 'person',
+    actual: false
+  });
+  excludeReference.display = trial.exclusion_text;
+  result.enrollment = [ includeReference, excludeReference ];
   result.principalInvestigator = result.addContainedResource({
     resourceType: 'Practitioner',
     name: [

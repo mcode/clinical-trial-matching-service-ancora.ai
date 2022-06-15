@@ -56,42 +56,116 @@ export default createClinicalTrialLookup;
 type QueryRequest = string;
 
 /**
+ * For documentation purposes, indicates a field is a date/time stamp in the
+ * format "YYYY-MM-DD HH:mm:ss+ZZ:ZZ"
+ */
+type DateTimeString = string;
+
+export interface AncoraTrialArm extends Record<string, string> {
+  "arm name": string;
+  "arm type": string;
+  "arm description": string;
+}
+
+export interface AncoraTrialLocation extends Record<string, string> {
+  city: string;
+  zip: string;
+  state: string;
+  facility: string;
+}
+
+export function isAncoraTrialLocation(o: unknown): o is AncoraTrialLocation {
+  if (typeof o !== "object" || o === null) return false;
+  const location  = o as AncoraTrialLocation;
+  return typeof location.city === 'string' &&
+    typeof location.zip === 'string' &&
+    typeof location.state === 'string' &&
+    typeof location.facility === 'string';
+}
+
+export interface AncoraTrialTreatment extends Record<string, string> {
+  treatment_type: string;
+  treatment_name: string;
+}
+
+/**
  * Generic type for the trials returned.
  *
  * TO-DO: Fill this out to match your implementation
  */
-export interface QueryTrial extends Record<string, unknown> {
-  name: string;
+export interface AncoraTrial extends Record<string, unknown> {
+  trial_id: string;
+  acronym: string;
+  brief_title: string;
+  date_posted: DateTimeString;
+  date_updated: DateTimeString;
+  enrollment: number;
+  exclusion_text: string;
+  inclusion_text: string;
+  primary_purpose: string;
+  principal_investigator: string;
+  recruiting_status: string;
+  start_date: DateTimeString;
+  study_type: string;
+  trial_phase: string;
+  trial_summary: string;
+  arms: AncoraTrialArm[];
+  locations: AncoraTrialLocation[];
+  sponsor: string;
+  treatments: AncoraTrialTreatment[];
 }
 
 /**
  * Type guard to determine if an object is a valid QueryTrial.
  * @param o the object to determine if it is a QueryTrial
  */
-export function isQueryTrial(o: unknown): o is QueryTrial {
+export function isAncoraTrial(o: unknown): o is AncoraTrial {
   if (typeof o !== "object" || o === null) return false;
-  // TO-DO: Make this match your format.
-  return typeof (o as QueryTrial).name === "string";
+  const trial = o as AncoraTrial;
+  return typeof trial.trial_id === 'string' &&
+    typeof trial.acronym === 'string' &&
+    typeof trial.brief_title === 'string' &&
+    typeof trial.date_posted === 'string' &&
+    typeof trial.date_updated === 'string' &&
+    typeof trial.enrollment === 'number' &&
+    typeof trial.exclusion_text === 'string' &&
+    typeof trial.inclusion_text === 'string' &&
+    typeof trial.primary_purpose === 'string' &&
+    typeof trial.principal_investigator === 'string' &&
+    typeof trial.recruiting_status === 'string' &&
+    typeof trial.start_date === 'string' &&
+    typeof trial.study_type === 'string' &&
+    typeof trial.trial_phase === 'string' &&
+    typeof trial.trial_summary === 'string' &&
+    Array.isArray(trial.arms) &&
+    Array.isArray(trial.locations) &&
+    typeof trial.sponsor === 'string' &&
+    Array.isArray(trial.treatments);
 }
 
 // Generic type for the response data being received from the server.
-export interface QueryResponse extends Record<string, unknown> {
-  matchingTrials: QueryTrial[];
+export interface AncoraResponse extends Record<string, unknown> {
+  length: number;
+  /**
+   * Map of NCT ID to trial.
+   */
+  trials: Record<string, AncoraTrial>;
 }
 
 /**
  * Type guard to determine if an object is a valid QueryResponse.
  * @param o the object to determine if it is a QueryResponse
  */
-export function isQueryResponse(o: unknown): o is QueryResponse {
+export function isAncoraResponse(o: unknown): o is AncoraResponse {
   if (typeof o !== "object" || o === null) return false;
 
-  // Note that the following DOES NOT check the array to make sure every object
-  // within it is valid. Currently this is done later in the process. This
-  // makes this type guard or the QueryResponse type sort of invalid. However,
-  // the assumption is that a single unparsable trial should not cause the
-  // entire response to be thrown away.
-  return Array.isArray((o as QueryResponse).matchingTrials);
+  // Note that the following DOES NOT check the trials object to make sure every
+  // object within it is valid. Currently this is done later in the process.
+  // This makes this type guard or the AncoraResponse type sort of invalid.
+  // However, the assumption is that a single unparsable trial should not cause
+  // the entire response to be thrown away.
+  const response = o as AncoraResponse;
+  return typeof response.length === 'number' && typeof response.trials === 'object';
 }
 
 export interface QueryErrorResponse extends Record<string, unknown> {
@@ -228,15 +302,16 @@ export class APIQuery {
  *     ClinicalTrials.gov
  */
 export function convertResponseToSearchSet(
-  response: QueryResponse,
+  response: AncoraResponse,
   ctgService?: ClinicalTrialsGovService
 ): Promise<SearchSet> {
   // Our final response
   const studies: ResearchStudy[] = [];
   // For generating IDs
   let id = 0;
-  for (const trial of response.matchingTrials) {
-    if (isQueryTrial(trial)) {
+  for (const nctId in response.trials) {
+    const trial = response.trials[nctId];
+    if (isAncoraTrial(trial)) {
       studies.push(convertToResearchStudy(trial, id++));
     } else {
       // This trial could not be understood. It can be ignored if that should
@@ -305,7 +380,7 @@ function sendQuery(
                 )
               );
             }
-            if (isQueryResponse(json)) {
+            if (isAncoraResponse(json)) {
               resolve(convertResponseToSearchSet(json, ctgService));
             } else if (isQueryErrorResponse(json)) {
               reject(

@@ -1,4 +1,4 @@
-import { QueryTrial } from '../src/query';
+import { AncoraTrial } from '../src/query';
 import convertToResearchStudy from '../src/researchstudy-mapping';
 
 import fs from 'fs';
@@ -18,7 +18,7 @@ describe('FHIR Validation', () => {
           reject(error);
           return;
         }
-        const json: QueryTrial = JSON.parse(data) as QueryTrial;
+        const json: AncoraTrial = JSON.parse(data) as AncoraTrial;
         const study = convertToResearchStudy(json, 1);
         const result = fhir.validate(study);
         if (result.messages && result.messages.length > 0) {

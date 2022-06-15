@@ -30,6 +30,7 @@ function scanResults(results: AncoraResponse): void {
   const phases = new Set<string>();
   const primaryPurposes = new Set<string>();
   const studyTypes = new Set<string>();
+  const treatmentTypes = new Set<string>();
   const seenKeys = new Map<string, Set<string>>();
   for (const nctId in results.trials) {
     const trial = results.trials[nctId];
@@ -38,6 +39,9 @@ function scanResults(results: AncoraResponse): void {
       phases.add(trial.trial_phase);
       primaryPurposes.add(trial.primary_purpose);
       studyTypes.add(trial.study_type);
+      for (const treatment of trial.treatments) {
+        treatmentTypes.add(treatment.treatment_type);
+      }
       // grab existing keys and what type they are
       for (const key in trial) {
         let types = seenKeys.get(key);
@@ -71,6 +75,8 @@ function scanResults(results: AncoraResponse): void {
   console.log(JSON.stringify(Array.from(phases).sort(), null, 2));
   console.log('Seen study types:');
   console.log(JSON.stringify(Array.from(studyTypes).sort(), null, 2));
+  console.log('Seen treatment types:');
+  console.log(JSON.stringify(Array.from(treatmentTypes).sort(), null, 2));
 }
 
 if (require.main === module) {

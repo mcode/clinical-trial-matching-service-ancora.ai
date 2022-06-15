@@ -10,14 +10,59 @@ import {
 } from "clinical-trial-matching-service";
 import createClinicalTrialLookup, {
   convertResponseToSearchSet,
-  isQueryTrial,
-  isQueryResponse,
+  isAncoraTrial,
+  isAncoraResponse,
   isQueryErrorResponse,
   APIQuery,
-  QueryResponse,
-  QueryTrial,
+  AncoraResponse,
+  AncoraTrial,
 } from "../src/query";
 import nock from "nock";
+
+const exampleTrial = {
+  "trial_id": "NCT00000000",
+  "acronym": "N/A",
+  "brief_title": "Example Trial",
+  "date_posted": "2022-01-15 00:00:00+00:00",
+  "date_updated": "2022-02-15 00:00:00+00:00",
+  "enrollment": 100,
+  "exclusion_text": "  Exclusion Criteria:\n\n    * Adults unable to consent\n\n    * Prisoners",
+  "inclusion_text": "  Inclusion Criteria:\n\n    * Adults age 18 and older",
+  "primary_purpose": "Treatment",
+  "principal_investigator": "Example Doctor, MD, Example Medical Center",
+  "recruiting_status": "Recruiting",
+  "start_date": "2022-01-21 00:00:00+00:00",
+  "study_type": "Interventional",
+  "trial_phase": "Not Applicable",
+  "trial_summary": "An example trial",
+  "arms": [
+    {
+      "arm name": "Control",
+      "arm type": "No Intervention",
+      "arm description": "Do nothing"
+    },
+    {
+      "arm name": "Experimental",
+      "arm type": "Experimental",
+      "arm description": "Do something"
+    }
+  ],
+  "locations": [
+    {
+      "city": "Bedford",
+      "zip": "01730",
+      "state": "Massachusetts",
+      "facility": "Example Facility"
+    }
+  ],
+  "sponsor": "Example Sponsor",
+  "treatments": [
+    {
+      "treatment_type": "Other",
+      "treatment_name": "Test value"
+    }
+  ]
+};
 
 describe("createClinicalTrialLookup()", () => {
   it("creates a function if configured properly", () => {
@@ -41,35 +86,35 @@ describe("createClinicalTrialLookup()", () => {
   });
 });
 
-describe("isQueryTrial()", () => {
+describe("isAncoraTrial()", () => {
   it("returns false for non-trial objects", () => {
-    expect(isQueryTrial(null)).toBeFalse();
-    expect(isQueryTrial(true)).toBeFalse();
-    expect(isQueryTrial("string")).toBeFalse();
-    expect(isQueryTrial(42)).toBeFalse();
-    expect(isQueryTrial({ invalid: true })).toBeFalse();
+    expect(isAncoraTrial(null)).toBeFalse();
+    expect(isAncoraTrial(true)).toBeFalse();
+    expect(isAncoraTrial("string")).toBeFalse();
+    expect(isAncoraTrial(42)).toBeFalse();
+    expect(isAncoraTrial({ invalid: true })).toBeFalse();
   });
 
   it("returns true on a matching object", () => {
-    expect(isQueryTrial({ name: "Hello" })).toBeTrue();
+    expect(isAncoraTrial(exampleTrial)).toBeTrue();
   });
 });
 
-describe("isQueryResponse()", () => {
+describe("isAncoraResponse()", () => {
   it("returns false for non-response objects", () => {
-    expect(isQueryResponse(null)).toBeFalse();
-    expect(isQueryResponse(true)).toBeFalse();
-    expect(isQueryResponse("string")).toBeFalse();
-    expect(isQueryResponse(42)).toBeFalse();
-    expect(isQueryResponse({ invalid: true })).toBeFalse();
+    expect(isAncoraResponse(null)).toBeFalse();
+    expect(isAncoraResponse(true)).toBeFalse();
+    expect(isAncoraResponse("string")).toBeFalse();
+    expect(isAncoraResponse(42)).toBeFalse();
+    expect(isAncoraResponse({ invalid: true })).toBeFalse();
   });
 
   it("returns true on a matching object", () => {
-    expect(isQueryResponse({ matchingTrials: [] })).toBeTrue();
-    expect(isQueryResponse({ matchingTrials: [{ name: "Trial" }] })).toBeTrue();
+    expect(isAncoraResponse({ length: 0, trials: {} })).toBeTrue();
+    expect(isAncoraResponse({ length: 1, trials: { "NCT00000001": exampleTrial } })).toBeTrue();
     // Currently this is true. It may make sense to make it false, but for now,
     // a single invalid trial does not invalidate the array.
-    expect(isQueryResponse({ matchingTrials: [{ invalid: true }] })).toBeTrue();
+    expect(isAncoraResponse({ length: 1, trials: { "NCT12345678": "invalid" } })).toBeTrue();
   });
 });
 
@@ -238,7 +283,10 @@ describe("convertResponseToSearchSet()", () => {
   it("converts trials", () => {
     return expectAsync(
       convertResponseToSearchSet({
-        matchingTrials: [{ name: "test" }],
+        length: 1,
+        trials: {
+          "NCT00000000": exampleTrial
+        },
       }).then((searchSet) => {
         expect(searchSet.entry.length).toEqual(1);
         expect(searchSet.entry[0].resource).toBeInstanceOf(ResearchStudy);
@@ -250,13 +298,16 @@ describe("convertResponseToSearchSet()", () => {
   });
 
   it("skips invalid trials", () => {
-    const response: QueryResponse = {
-      matchingTrials: [],
+    const response: AncoraResponse = {
+      length: 1,
+      trials: {
+        "NCT00000000": exampleTrial
+      }
     };
     // Push on an invalid object
-    response.matchingTrials.push(({
+    response.trials['NCT12345678'] = ({
       invalidObject: true,
-    } as unknown) as QueryTrial);
+    } as unknown) as AncoraTrial;
     return expectAsync(convertResponseToSearchSet(response)).toBeResolved();
   });
 
@@ -273,7 +324,10 @@ describe("convertResponseToSearchSet()", () => {
     return expectAsync(
       convertResponseToSearchSet(
         {
-          matchingTrials: [{ name: "test" }],
+          length: 1,
+          trials: {
+            "NCT00000001": exampleTrial
+          }
         },
         backupService
       )
@@ -314,7 +368,7 @@ describe("ClinicalTrialLookup", () => {
   });
 
   it("generates a request", () => {
-    mockRequest.reply(200, { matchingTrials: [] });
+    mockRequest.reply(200, { length: 1, trials: {} });
     return expectAsync(matcher(patientBundle)).toBeResolved();
   });
 

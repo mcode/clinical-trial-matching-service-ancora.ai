@@ -12,6 +12,8 @@ import {
   SearchSet,
 } from "clinical-trial-matching-service";
 import convertToResearchStudy from "./researchstudy-mapping";
+import { AncoraQuery } from './ancora-query';
+import { findQueryFlagsForCode } from './ancora-mappings';
 
 export interface QueryConfiguration extends ServiceConfiguration {
   endpoint?: string;
@@ -43,17 +45,13 @@ export function createClinicalTrialLookup(
     patientBundle: fhir.Bundle
   ): Promise<SearchSet> {
     // Create the query based on the patient bundle:
-    const query = new APIQuery(patientBundle);
+    const query = new AncoraAPIQuery(patientBundle);
     // And send the query to the server
     return sendQuery(endpoint, query, bearerToken, ctgService);
   };
 }
 
 export default createClinicalTrialLookup;
-
-// Generic type for the request data being sent to the server. Fill this out
-// with a more complete type.
-type QueryRequest = string;
 
 /**
  * For documentation purposes, indicates a field is a date/time stamp in the
@@ -89,9 +87,7 @@ export interface AncoraTrialTreatment extends Record<string, string> {
 }
 
 /**
- * Generic type for the trials returned.
- *
- * TO-DO: Fill this out to match your implementation
+ * Ancora.ai trial
  */
 export interface AncoraTrial extends Record<string, unknown> {
   trial_id: string;
@@ -181,11 +177,6 @@ export function isQueryErrorResponse(o: unknown): o is QueryErrorResponse {
   return typeof (o as QueryErrorResponse).error === "string";
 }
 
-// Generic type that represents a JSON object - that is, an object parsed from
-// JSON. Note that the return value from JSON.parse is an any, this does not
-// represent that.
-type JsonObject = Record<string, unknown>;
-
 // API RESPONSE SECTION
 export class APIError extends Error {
   constructor(
@@ -205,35 +196,31 @@ export class APIError extends Error {
  * based on a patient bundle.
  * Reference https://github.com/mcode/clinical-trial-matching-engine/wiki to see patientBundle Structures
  */
-export class APIQuery {
-  // The following example fields are defined by default within the matching UI
+export class AncoraAPIQuery {
   /**
-   * US zip code
+   * The query object being built.
    */
-  zipCode: string;
+  _query: AncoraQuery;
   /**
    * Distance in miles a user has indicated they're willing to travel
    */
-  travelRadius: number;
+  _travelRadius: number;
   /**
    * A FHIR ResearchStudy phase
    */
-  phase: string;
+  _phase: string;
   /**
    * A FHIR ResearchStudy status
    */
-  recruitmentStatus: string;
-  /**
-   * A set of conditions.
-   */
-  conditions: { code: string; system: string }[] = [];
-  // TO-DO Add any additional fields which need to be extracted from the bundle to construct query
+  _recruitmentStatus: string;
 
   /**
    * Create a new query object.
    * @param patientBundle the patient bundle to use for field values
    */
   constructor(patientBundle: fhir.Bundle) {
+    // Build the internal query object.
+    this._query = {};
     for (const entry of patientBundle.entry) {
       if (!("resource" in entry)) {
         // Skip bad entries
@@ -244,32 +231,70 @@ export class APIQuery {
       if (resource.resourceType === "Parameters") {
         for (const parameter of resource.parameter) {
           if (parameter.name === "zipCode") {
-            this.zipCode = parameter.valueString;
+            this._query.zip_code = parameter.valueString;
           } else if (parameter.name === "travelRadius") {
-            this.travelRadius = parseFloat(parameter.valueString);
+            // FIXME: No mapping within Ancora at present
+            this._travelRadius = parseFloat(parameter.valueString);
           } else if (parameter.name === "phase") {
-            this.phase = parameter.valueString;
+            // FIXME: No mapping within Ancora at present
+            this._phase = parameter.valueString;
           } else if (parameter.name === "recruitmentStatus") {
-            this.recruitmentStatus = parameter.valueString;
+            // FIXME: No mapping within Ancora at present
+            this._recruitmentStatus = parameter.valueString;
           }
         }
-      }
-      // Gather all conditions the patient has
-      if (resource.resourceType === "Condition") {
+      } else if (resource.resourceType === "Condition") {
         this.addCondition(resource);
+      } else if (resource.resourceType === "Observation") {
+        this.addObservation(resource);
+      } else if (resource.resourceType === "MedicationStatement") {
+        this.addMedicationStatement(resource);
       }
-      // TO-DO Extract any additional resources that you defined
     }
   }
 
   /**
-   * Handle condition data. The default implementation does nothing, your
-   * implementation may pull out specific data.
+   * Looks up and adds a code to the query.
+   * @param code the code to add
+   */
+  _addCode(code: { system: string, code: string }): void {
+    const flags = findQueryFlagsForCode(code.system, code.code);
+    if (flags) {
+      for (const flag of flags) {
+        this._query[flag] = true;
+      }
+    }
+  }
+
+  /**
+   * Adds a condition. Looks at the code and set flags based on known codes.
    * @param condition the condition to add
    */
   addCondition(condition: fhir.Condition): void {
     for (const coding of condition.code.coding) {
-      this.conditions.push(coding);
+      this._addCode(coding);
+    }
+  }
+
+  /**
+   * Adds an observation. Looks at the code and set flags based on known codes.
+   * @param observation the observation to add
+   */
+  addObservation(observation: fhir.Observation): void {
+    for (const coding of observation.valueCodeableConcept.coding) {
+      this._addCode(coding);
+    }
+  }
+
+  /**
+   * Adds a medications statement. Looks at the code and set flags based on
+   * known codes.
+   * @param medicationStatement the medication statement to add
+   */
+  addMedicationStatement(medicationStatement: fhir.MedicationStatement): void {
+    // Turns out this uses the same properties as Condition
+    for (const coding of medicationStatement.code.coding) {
+      this._addCode(coding);
     }
   }
 
@@ -277,19 +302,13 @@ export class APIQuery {
    * Create the information sent to the server.
    * @return {string} the api query
    */
-  toQuery(): QueryRequest {
-    return JSON.stringify({
-      zip: this.zipCode,
-      distance: this.travelRadius,
-      phase: this.phase,
-      status: this.recruitmentStatus,
-      conditions: this.conditions,
-    });
+  toQuery(): AncoraQuery {
+    // TODO (maybe): Clone the object?
+    return this._query;
   }
 
   toString(): string {
-    // Note that if toQuery is no longer a string, this will no longer work
-    return this.toQuery();
+    return JSON.stringify(this.toQuery());
   }
 }
 
@@ -343,12 +362,12 @@ export function convertResponseToSearchSet(
  */
 function sendQuery(
   endpoint: string,
-  query: APIQuery,
+  query: AncoraAPIQuery,
   bearerToken: string,
   ctgService?: ClinicalTrialsGovService
 ): Promise<SearchSet> {
   return new Promise((resolve, reject) => {
-    const body = Buffer.from(query.toQuery(), "utf8");
+    const body = Buffer.from(query.toString(), "utf8");
 
     const request = https.request(
       endpoint,

@@ -13,7 +13,7 @@ import createClinicalTrialLookup, {
   isAncoraTrial,
   isAncoraResponse,
   isQueryErrorResponse,
-  APIQuery,
+  AncoraAPIQuery,
   AncoraResponse,
   AncoraTrial,
 } from "../src/query";
@@ -134,7 +134,7 @@ describe("isQueryErrorResponse()", () => {
 
 describe("APIQuery", () => {
   it("extracts passed properties", () => {
-    const query = new APIQuery({
+    const query = new AncoraAPIQuery({
       resourceType: "Bundle",
       type: "collection",
       entry: [
@@ -163,14 +163,14 @@ describe("APIQuery", () => {
         },
       ],
     });
-    expect(query.zipCode).toEqual("01730");
-    expect(query.travelRadius).toEqual(25);
-    expect(query.phase).toEqual("phase-1");
-    expect(query.recruitmentStatus).toEqual("approved");
+    expect(query._query.zip_code).toEqual("01730");
+    // Not mapped: expect(query.travelRadius).toEqual(25);
+    // Not mapped: expect(query.phase).toEqual("phase-1");
+    // Not mapped: expect(query.recruitmentStatus).toEqual("approved");
   });
 
   it("gathers conditions", () => {
-    const query = new APIQuery({
+    const query = new AncoraAPIQuery({
       resourceType: "Bundle",
       type: "collection",
       entry: [
@@ -180,8 +180,8 @@ describe("APIQuery", () => {
             code: {
               coding: [
                 {
-                  system: "http://www.example.com/",
-                  code: "test",
+                  system: "http://loinc.org",
+                  code: "98489-8",
                 },
               ],
             },
@@ -189,12 +189,12 @@ describe("APIQuery", () => {
         },
         {
           resource: {
-            resourceType: "Condition",
+            resourceType: "MedicationStatement",
             code: {
               coding: [
                 {
-                  system: "https://www.example.com/",
-                  code: "test-2",
+                  system: "http://www.nlm.nih.gov/research/umls/rxnorm",
+                  code: "2049112",
                 },
               ],
             },
@@ -202,15 +202,13 @@ describe("APIQuery", () => {
         },
       ],
     });
-    expect(query.conditions).toEqual([
-      { system: "http://www.example.com/", code: "test" },
-      { system: "https://www.example.com/", code: "test-2" },
-    ]);
+    expect(query._query.flt3_itd).toBeTrue();
+    expect(query._query.braf_therapy).toBeTrue();
   });
 
   it("converts the query to a string", () => {
     expect(
-      new APIQuery({
+      new AncoraAPIQuery({
         resourceType: "Bundle",
         type: "collection",
         entry: [
@@ -240,13 +238,13 @@ describe("APIQuery", () => {
         ],
       }).toString()
     ).toEqual(
-      '{"zip":"01730","distance":25,"phase":"phase-1","status":"approved","conditions":[]}'
+      '{"zip_code":"01730"}'
     );
   });
 
   it("ignores unknown parameters", () => {
     // Passing in this case is simply "not raising an exception"
-    new APIQuery({
+    new AncoraAPIQuery({
       resourceType: "Bundle",
       type: "collection",
       entry: [
@@ -274,7 +272,7 @@ describe("APIQuery", () => {
     };
     // Force an invalid entry in
     bundle.entry.push(({ invalid: true } as unknown) as fhir.BundleEntry);
-    new APIQuery(bundle);
+    new AncoraAPIQuery(bundle);
     // Passing is not raising an exception
   });
 });

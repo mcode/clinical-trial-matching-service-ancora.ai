@@ -13,7 +13,7 @@ import {
 } from "clinical-trial-matching-service";
 import convertToResearchStudy from "./researchstudy-mapping";
 import { AncoraQuery } from './ancora-query';
-import { findQueryFlagsForCode } from './ancora-mappings';
+import { findQueryFlagsForCode, findDiseaseTypeForCode } from './ancora-mappings';
 
 export interface QueryConfiguration extends ServiceConfiguration {
   endpoint?: string;
@@ -273,6 +273,12 @@ export class AncoraAPIQuery {
   addCondition(condition: fhir.Condition): void {
     for (const coding of condition.code.coding) {
       this._addCode(coding);
+      // Also see if this is a known disease type
+      const diseaseType = findDiseaseTypeForCode(coding.system, coding.code);
+      if (diseaseType !== null) {
+        // For now, if multiple types match, just take the last one seen
+        this._query.type_of_disease = diseaseType;
+      }
     }
   }
 

@@ -164,12 +164,13 @@ describe("APIQuery", () => {
       ],
     });
     expect(query._query.zip_code).toEqual("01730");
-    // Not mapped: expect(query.travelRadius).toEqual(25);
-    // Not mapped: expect(query.phase).toEqual("phase-1");
-    // Not mapped: expect(query.recruitmentStatus).toEqual("approved");
+    // The following aren't properly mapped but are stored
+    expect(query._travelRadius).toEqual(25);
+    expect(query._phase).toEqual("phase-1");
+    expect(query._recruitmentStatus).toEqual("approved");
   });
 
-  it("gathers conditions", () => {
+  it("maps conditions properly", () => {
     const query = new AncoraAPIQuery({
       resourceType: "Bundle",
       type: "collection",
@@ -182,6 +183,20 @@ describe("APIQuery", () => {
                 {
                   system: "http://loinc.org",
                   code: "98489-8",
+                },
+              ],
+            },
+          },
+        },
+        {
+          resource: {
+            resourceType: "Condition",
+            code: {
+              coding: [
+                {
+                  system: "http://snomed.info/sct",
+                  code: "326072005",
+                  display: "Carcinoma of head of pancreas (disorder)"
                 },
               ],
             },
@@ -204,6 +219,7 @@ describe("APIQuery", () => {
     });
     expect(query._query.flt3_itd).toBeTrue();
     expect(query._query.braf_therapy).toBeTrue();
+    expect(query._query.type_of_disease).toEqual("Pancreatic Cancer");
   });
 
   it("converts the query to a string", () => {

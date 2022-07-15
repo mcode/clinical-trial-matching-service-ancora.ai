@@ -3,9 +3,42 @@
  */
 
 /**
- * An AncoraQuery object, based on the fields defined
+ * An AncoraQuery object.
  */
  export interface AncoraQuery {
+  /**
+   * Two digit [sic] country code (presumably ISO-3166 alpha-2 codes?)
+   */
+  country: string;
+  /**
+   * What is the type of cancer
+   * Breast Cancer, Cervical Cancer, Lung Cancer, Melanoma,  Colorectal Cancer, Kidney Cancer, Prostate Cancer, Liver Cancer, Pancreatic Cancer, Cholangiocarcinoma, Esophageal Cancer, Gastric Cancer, Acute Myeloid Leukemia, Myeloma
+   */
+  type_of_disease: "Breast Cancer" | "Cervical Cancer" | "Lung Cancer" |
+    "Melanoma" | "Colorectal Cancer" | "Kidney Cancer" | "Prostate Cancer" |
+    "Liver Cancer" | "Pancreatic Cancer" | "Cholangiocarcinoma" |
+    "Esophageal Cancer" | "Gastric Cancer" | "Acute Myeloid Leukemia" |
+    "Myeloma";
+
+  location?: {
+    lat: number,
+    long: number
+  };
+
+  /**
+   * an integer defining search radius
+   */
+  radius?: number;
+
+  radius_unit?: "MI" | "KM";
+
+  /**
+   * an object containing filtering parameters
+   */
+  criterions?: AncoraCriteria;
+}
+
+export interface AncoraCriteria {
   /**
    * Has the tumor been tested positive for EGFR
    */
@@ -140,15 +173,6 @@
    * true, false
    */
   cns_leukemia?: boolean;
-  /**
-   * What is the type of cancer
-   * Breast Cancer, Cervical Cancer, Lung Cancer, Melanoma,  Colorectal Cancer, Kidney Cancer, Prostate Cancer, Liver Cancer, Pancreatic Cancer, Cholangiocarcinoma, Esophageal Cancer, Gastric Cancer, Acute Myeloid Leukemia, Myeloma
-   */
-  type_of_disease?: "Breast Cancer" | "Cervical Cancer" | "Lung Cancer" |
-    "Melanoma" | "Colorectal Cancer" | "Kidney Cancer" | "Prostate Cancer" |
-    "Liver Cancer" | "Pancreatic Cancer" | "Cholangiocarcinoma" |
-    "Esophageal Cancer" | "Gastric Cancer" | "Acute Myeloid Leukemia" |
-    "Myeloma";
   /**
    * What is the patient's treatment stage? (Hemoc)
    * true, false
@@ -566,19 +590,20 @@
 }
 
 /**
- * Set of valid flag values. These are the keys within AncoraQuery where the
- * property is a boolean. This can be used to ensure that something like:
+ * Set of valid flag values within the criterions. These are the keys within
+ * AncoraCriterions where the property is a boolean. This can be used to ensure
+ * that something like:
  *
  * ```typescript
- * let flag: AncoraFlag = 'in_treatment';
- * query[flag] = true;
+ * let flag: AncoraCriterionFlag = 'in_treatment';
+ * query.criterions[flag] = true;
  * ```
  *
  * Can be proven valid to the TypeScript compiler.
  */
- export type AncoraQueryFlag = {
+ export type AncoraCriterionFlag = {
   // Some TypeScript magic: create a type that is simply a set of values that
   // are either themselves if originally a boolean or never, then index on
   // those keys, producing a final list of strings that are booleans.
-  [K in keyof AncoraQuery]: AncoraQuery[K] extends boolean ? K : never;
-}[keyof AncoraQuery];
+  [K in keyof AncoraCriteria]: AncoraCriteria[K] extends boolean ? K : never;
+}[keyof AncoraCriteria];

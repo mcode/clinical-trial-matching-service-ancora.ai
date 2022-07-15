@@ -12,7 +12,7 @@ import {
   SearchSet,
 } from "clinical-trial-matching-service";
 import convertToResearchStudy from "./researchstudy-mapping";
-import { AncoraQuery } from './ancora-query';
+import { AncoraCriteria, AncoraQuery } from './ancora-query';
 import { findQueryFlagsForCode, findDiseaseTypeForCode } from './ancora-mappings';
 
 export interface QueryConfiguration extends ServiceConfiguration {
@@ -198,29 +198,42 @@ export class APIError extends Error {
  */
 export class AncoraAPIQuery {
   /**
-   * The query object being built.
+   * The various criteria for the query.
    */
-  _query: AncoraQuery;
+  _criterions: AncoraCriteria;
+  /**
+   * Type of disease. Must be set when
+   */
+  typeOfDisease: AncoraQuery['type_of_disease'] | null = null;
+  /**
+   * ZIP code.
+   */
+  _zipCode: string | null = null;
   /**
    * Distance in miles a user has indicated they're willing to travel
    */
-  _travelRadius: number;
+  _travelRadius: number | null = null;
   /**
    * A FHIR ResearchStudy phase
    */
-  _phase: string;
+  _phase: string | null = null;
   /**
    * A FHIR ResearchStudy status
    */
-  _recruitmentStatus: string;
+  _recruitmentStatus: string | null = null;
 
   /**
    * Create a new query object.
    * @param patientBundle the patient bundle to use for field values
+   * @param defaultTypeOfDisease type of disease to default to if no disease can
+   *   be found within the patient data
    */
-  constructor(patientBundle: fhir.Bundle) {
-    // Build the internal query object.
-    this._query = {};
+  constructor(patientBundle: fhir.Bundle, defaultTypeOfDisease?: AncoraQuery['type_of_disease']) {
+    // Build the internal criterions object.
+    this._criterions = {};
+    if (defaultTypeOfDisease) {
+      this.typeOfDisease = defaultTypeOfDisease;
+    }
     for (const entry of patientBundle.entry) {
       if (!("resource" in entry)) {
         // Skip bad entries
@@ -231,12 +244,12 @@ export class AncoraAPIQuery {
       if (resource.resourceType === "Parameters") {
         for (const parameter of resource.parameter) {
           if (parameter.name === "zipCode") {
-            this._query.zip_code = parameter.valueString;
+            this._zipCode = parameter.valueString;
           } else if (parameter.name === "travelRadius") {
             // FIXME: No mapping within Ancora at present
             this._travelRadius = parseFloat(parameter.valueString);
           } else if (parameter.name === "phase") {
-            // FIXME: No mapping within Ancora at present
+            // FIXME: Map to tumor_phase
             this._phase = parameter.valueString;
           } else if (parameter.name === "recruitmentStatus") {
             // FIXME: No mapping within Ancora at present
@@ -261,7 +274,7 @@ export class AncoraAPIQuery {
     const flags = findQueryFlagsForCode(code.system, code.code);
     if (flags) {
       for (const flag of flags) {
-        this._query[flag] = true;
+        this._criterions[flag] = true;
       }
     }
   }
@@ -277,7 +290,7 @@ export class AncoraAPIQuery {
       const diseaseType = findDiseaseTypeForCode(coding.system, coding.code);
       if (diseaseType !== null) {
         // For now, if multiple types match, just take the last one seen
-        this._query.type_of_disease = diseaseType;
+        this.typeOfDisease = diseaseType;
       }
     }
   }
@@ -305,15 +318,33 @@ export class AncoraAPIQuery {
   }
 
   /**
-   * Create the information sent to the server.
-   * @return {string} the api query
+   * Create an AncoraQuery based on properties within this object. If
+   * typeOfDisease is `null` this will throw an exception, as the type of
+   * disease must be set within the final query.
+   * @return the query object
    */
   toQuery(): AncoraQuery {
-    // TODO (maybe): Clone the object?
-    return this._query;
+    if (this.typeOfDisease == null) {
+      throw new Error('No supported type of disease found within patient data, cannot generate a valid query.');
+    }
+    // TODO (maybe): Clone the criterions object?
+    const query: AncoraQuery = {
+      // FIXME: Currently hard-coded
+      country: 'US',
+      criterions: this._criterions,
+      type_of_disease: this.typeOfDisease
+    };
+    if (this._travelRadius != null) {
+      query.radius = this._travelRadius;
+      query.radius_unit = 'MI';
+    }
+    return query;
   }
 
   toString(): string {
+    if (this.typeOfDisease == null) {
+      return '[AncoraQuerty: invalid, with criteria: ' + JSON.stringify(this._criterions) + ']';
+    }
     return JSON.stringify(this.toQuery());
   }
 }

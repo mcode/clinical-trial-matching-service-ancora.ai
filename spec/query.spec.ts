@@ -163,8 +163,7 @@ describe("APIQuery", () => {
         },
       ],
     });
-    expect(query._query.zip_code).toEqual("01730");
-    // The following aren't properly mapped but are stored
+    expect(query._zipCode).toEqual("01730");
     expect(query._travelRadius).toEqual(25);
     expect(query._phase).toEqual("phase-1");
     expect(query._recruitmentStatus).toEqual("approved");
@@ -217,9 +216,9 @@ describe("APIQuery", () => {
         },
       ],
     });
-    expect(query._query.flt3_itd).toBeTrue();
-    expect(query._query.braf_therapy).toBeTrue();
-    expect(query._query.type_of_disease).toEqual("Pancreatic Cancer");
+    expect(query._criterions.flt3_itd).toBeTrue();
+    expect(query._criterions.braf_therapy).toBeTrue();
+    expect(query.typeOfDisease).toEqual("Pancreatic Cancer");
   });
 
   it("converts the query to a string", () => {
@@ -252,9 +251,11 @@ describe("APIQuery", () => {
             },
           },
         ],
-      }).toString()
+      }, "Breast Cancer").toString()
     ).toEqual(
-      '{"zip_code":"01730"}'
+      // This is probably stable as of ECMAScript 2015 which should cover
+      // supported versions of Node.js
+      '{"country":"US","criterions":{},"type_of_disease":"Breast Cancer","radius":25,"radius_unit":"MI"}'
     );
   });
 

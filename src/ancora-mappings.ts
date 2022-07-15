@@ -3,7 +3,7 @@
  * boolean fields.
  */
 
-import { AncoraQuery, AncoraQueryFlag } from './ancora-query';
+import { AncoraQuery, AncoraCriterionFlag } from './ancora-query';
 
 const LOINC_SYSTEM = 'http://loinc.org';
 const RX_NORM_SYSTEM = 'http://www.nlm.nih.gov/research/umls/rxnorm';
@@ -15,7 +15,7 @@ const SNOMED_CT_SYSTEM = 'http://snomed.info/sct';
 type FhirSystem = typeof LOINC_SYSTEM | typeof RX_NORM_SYSTEM | typeof SNOMED_CT_SYSTEM;
 type CodeMappings = Map<FhirSystem, string[]>;
 
-const ancoraToCodes = new Map<AncoraQueryFlag, CodeMappings>([
+const ancoraToCodes = new Map<AncoraCriterionFlag, CodeMappings>([
   [
     'alk',
     new Map<FhirSystem, string[]>([
@@ -289,12 +289,12 @@ const ancoraToCodes = new Map<AncoraQueryFlag, CodeMappings>([
 // With the existing mappings, the most common lookup is actually [system, code]
 // to an Ancora flag, so build that mapping
 
-const codesToAncora = new Map<string, Map<string, Set<AncoraQueryFlag>>>();
+const codesToAncora = new Map<string, Map<string, Set<AncoraCriterionFlag>>>();
 
-function codeMappingFor(system: FhirSystem): Map<string, Set<AncoraQueryFlag>> {
+function codeMappingFor(system: FhirSystem): Map<string, Set<AncoraCriterionFlag>> {
   let mapping = codesToAncora.get(system);
   if (!mapping) {
-    mapping = new Map<string, Set<AncoraQueryFlag>>();
+    mapping = new Map<string, Set<AncoraCriterionFlag>>();
     codesToAncora.set(system, mapping);
   }
   return mapping;
@@ -308,7 +308,7 @@ for (const [flag, mappings] of ancoraToCodes.entries()) {
       if (existing) {
         existing.add(flag);
       } else {
-        systemMappings.set(code, new Set<AncoraQueryFlag>([flag]))
+        systemMappings.set(code, new Set<AncoraCriterionFlag>([flag]))
       }
     }
   }
@@ -321,7 +321,7 @@ for (const [flag, mappings] of ancoraToCodes.entries()) {
  * @returns null if the code is unknown, otherwise an array of all matching
  * flags
  */
-export function findQueryFlagsForCode(system: string, code: string): AncoraQueryFlag[] | null {
+export function findQueryFlagsForCode(system: string, code: string): AncoraCriterionFlag[] | null {
   // See if something exists
   const mapping = codesToAncora.get(system);
   if (mapping) {

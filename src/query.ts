@@ -15,9 +15,9 @@ import convertToResearchStudy from "./researchstudy-mapping";
 import { AncoraCriteria, AncoraQuery } from './ancora-query';
 import { findQueryFlagsForCode, findDiseaseTypeForCode } from './ancora-mappings';
 
-export interface QueryConfiguration extends ServiceConfiguration {
+export interface AncoraAiConfiguration extends ServiceConfiguration {
   endpoint?: string;
-  auth_token?: string;
+  api_key?: string;
 }
 
 /**
@@ -28,30 +28,30 @@ export interface QueryConfiguration extends ServiceConfiguration {
  *     update the returned trials with additional information pulled from
  *     ClinicalTrials.gov
  */
-export function createClinicalTrialLookup(
-  configuration: QueryConfiguration,
+export function createAncoraAiLookup(
+  configuration: AncoraAiConfiguration,
   ctgService?: ClinicalTrialsGovService
 ): (patientBundle: fhir.Bundle) => Promise<SearchSet> {
   // Raise errors on missing configuration
   if (typeof configuration.endpoint !== "string") {
     throw new Error("Missing endpoint in configuration");
   }
-  if (typeof configuration.auth_token !== "string") {
-    throw new Error("Missing auth_token in configuration");
+  if (typeof configuration.api_key !== "string") {
+    throw new Error("Missing api_key in configuration");
   }
   const endpoint = configuration.endpoint;
-  const bearerToken = configuration.auth_token;
+  const apiKey = configuration.api_key;
   return function getMatchingClinicalTrials(
     patientBundle: fhir.Bundle
   ): Promise<SearchSet> {
     // Create the query based on the patient bundle:
     const query = new AncoraAPIQuery(patientBundle);
     // And send the query to the server
-    return sendQuery(endpoint, query, bearerToken, ctgService);
+    return sendQuery(endpoint, query, apiKey, ctgService);
   };
 }
 
-export default createClinicalTrialLookup;
+export default createAncoraAiLookup;
 
 /**
  * For documentation purposes, indicates a field is a date/time stamp in the
@@ -391,8 +391,7 @@ export function convertResponseToSearchSet(
  *
  * @param endpoint the URL of the end point to send the query to
  * @param query the query to send
- * @param bearerToken the bearer token to send along with the query to
- *     authenticate with the service
+ * @param apiKey the API key to send
  * @param ctgService an optional ClinicalTrialGovService which can be used to
  *     update the returned trials with additional information pulled from
  *     ClinicalTrials.gov
@@ -400,7 +399,7 @@ export function convertResponseToSearchSet(
 function sendQuery(
   endpoint: string,
   query: AncoraAPIQuery,
-  bearerToken: string,
+  apiKey: string,
   ctgService?: ClinicalTrialsGovService
 ): Promise<SearchSet> {
   return new Promise((resolve, reject) => {
@@ -413,7 +412,7 @@ function sendQuery(
         headers: {
           "Content-Type": "application/json; charset=UTF-8",
           "Content-Length": body.byteLength.toString(),
-          Authorization: "Bearer " + bearerToken,
+          "X-Api-Key": apiKey,
         },
       },
       (result) => {
@@ -435,6 +434,7 @@ function sendQuery(
                   responseBody
                 )
               );
+              return;
             }
             if (isAncoraResponse(json)) {
               resolve(convertResponseToSearchSet(json, ctgService));

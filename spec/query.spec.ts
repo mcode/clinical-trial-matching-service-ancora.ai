@@ -8,7 +8,7 @@ import {
   fhir,
   ResearchStudy,
 } from "clinical-trial-matching-service";
-import createClinicalTrialLookup, {
+import createAncoraAiLookup, {
   convertResponseToSearchSet,
   isAncoraTrial,
   isAncoraResponse,
@@ -67,9 +67,9 @@ const exampleTrial = {
 describe("createClinicalTrialLookup()", () => {
   it("creates a function if configured properly", () => {
     expect(
-      typeof createClinicalTrialLookup({
+      typeof createAncoraAiLookup({
         endpoint: "http://www.example.com/",
-        auth_token: "token",
+        api_key: "token",
       })
     ).toEqual("function");
   });
@@ -78,11 +78,11 @@ describe("createClinicalTrialLookup()", () => {
   // configurations
   it("raises an error if configuration is missing", () => {
     expect(() => {
-      createClinicalTrialLookup({});
+      createAncoraAiLookup({});
     }).toThrowError("Missing endpoint in configuration");
     expect(() => {
-      createClinicalTrialLookup({ endpoint: "http://www.example.com/" });
-    }).toThrowError("Missing auth_token in configuration");
+      createAncoraAiLookup({ endpoint: "http://www.example.com/" });
+    }).toThrowError("Missing api_key in configuration");
   });
 });
 
@@ -368,9 +368,9 @@ describe("ClinicalTrialLookup", () => {
     // Create the matcher here. This creates a new instance each test so that
     // each test can adjust it as necessary without worrying about interfering
     // with other tests.
-    matcher = createClinicalTrialLookup({
+    matcher = createAncoraAiLookup({
       endpoint: "https://www.example.com/endpoint",
-      auth_token: "test_token",
+      api_key: "test_token",
     });
     // Create the interceptor for the mock request here as it's the same for
     // each test

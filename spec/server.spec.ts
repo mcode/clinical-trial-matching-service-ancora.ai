@@ -22,7 +22,7 @@ describe("startServer()", () => {
     return expectAsync(
       startServer({
         endpoint: "https://www.example.com/endpoint",
-        auth_token: "fake",
+        api_key: "fake",
         host: "127.0.0.1",
         port: 0,
       }).then((service) => {

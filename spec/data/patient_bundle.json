@@ -1,0 +1,85 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Parameters",
+        "id": "0",
+        "parameter": [
+          {
+            "name": "zipCode",
+            "valueString": "75001"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "search_patient",
+        "gender": "female",
+        "birthDate": "1953"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-primary-cancer-condition"
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "363406005",
+              "display": "Malignant tumor of colon"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "mcode-ecog-performance-status",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-ecog-performance-status"
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "89247-1"
+            }
+          ]
+        },
+        "valueString": ""
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "mcode-cancer-stage-group",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-cancer-stage-group"
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "21914-7"
+            }
+          ]
+        },
+        "valueString": "II"
+      }
+    }
+  ]
+}

@@ -13,7 +13,7 @@ import {
 } from "clinical-trial-matching-service";
 import convertToResearchStudy from "./researchstudy-mapping";
 import { AncoraCriteria, AncoraQuery } from './ancora-query';
-import { findQueryFlagsForCode, findDiseaseTypeForCode } from './ancora-mappings';
+import { findQueryFlagsForCode, findDiseaseTypeForCode, findTumorStage } from './ancora-mappings';
 
 export interface AncoraAiConfiguration extends ServiceConfiguration {
   endpoint?: string;
@@ -249,7 +249,7 @@ export class AncoraAPIQuery {
             // FIXME: No mapping within Ancora at present
             this._travelRadius = parseFloat(parameter.valueString);
           } else if (parameter.name === "phase") {
-            // FIXME: Map to tumor_phase
+            // FIXME: No mapping within Ancora at present
             this._phase = parameter.valueString;
           } else if (parameter.name === "recruitmentStatus") {
             // FIXME: No mapping within Ancora at present
@@ -300,8 +300,15 @@ export class AncoraAPIQuery {
    * @param observation the observation to add
    */
   addObservation(observation: fhir.Observation): void {
-    for (const coding of observation.valueCodeableConcept.coding) {
-      this._addCode(coding);
+    if (observation.valueCodeableConcept) {
+      for (const coding of observation.valueCodeableConcept.coding) {
+        this._addCode(coding);
+      }
+    }
+    // Check if this is a tumor stage observation
+    const tumorStage = findTumorStage(observation);
+    if (tumorStage !== null) {
+      this._criterions.tumor_stage = tumorStage;
     }
   }
 
@@ -341,11 +348,15 @@ export class AncoraAPIQuery {
     return query;
   }
 
+  /**
+   * Generates a debug string for the query.
+   * @returns a string representation of the query
+   */
   toString(): string {
     if (this.typeOfDisease == null) {
-      return '[AncoraQuerty: invalid, with criteria: ' + JSON.stringify(this._criterions) + ']';
+      return '[AncoraAPIQuery (invalid: no typeOfDisease, with criteria: ' + JSON.stringify(this._criterions) + ')]';
     }
-    return JSON.stringify(this.toQuery());
+    return `[AncoraAPIQuery ${JSON.stringify(this.toQuery())}]`;
   }
 }
 
@@ -403,7 +414,7 @@ function sendQuery(
   ctgService?: ClinicalTrialsGovService
 ): Promise<SearchSet> {
   return new Promise((resolve, reject) => {
-    const body = Buffer.from(query.toString(), "utf8");
+    const body = Buffer.from(JSON.stringify(query.toQuery()), "utf8");
 
     const request = https.request(
       endpoint,

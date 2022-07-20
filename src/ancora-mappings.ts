@@ -3,6 +3,7 @@
  * boolean fields.
  */
 
+import { fhir } from 'clinical-trial-matching-service';
 import { AncoraQuery, AncoraCriterionFlag } from './ancora-query';
 
 const LOINC_SYSTEM = 'http://loinc.org';
@@ -523,6 +524,12 @@ const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
       '427492003', '399590005', '399068003', '369486003', '369485004',
       '314969001',
     ]
+  ],
+  [
+    'Colorectal Cancer',
+    [
+      '363406005'
+    ]
   ]
 ]);
 
@@ -545,4 +552,36 @@ export function findDiseaseTypeForCode(system: string, code: string): AncoraQuer
     return null;
   }
   return codesToDiseaseType.get(code) ?? null;
+}
+
+// Tumor Stage mappings
+
+const STAGE_LOINC_CODES = new Set<string>(['21908-9', '21902-2', '21914-7']);
+// FIXME: This is wrong but is the way the front end generates the stages so ??
+const STAGE_CODES = new Map<string, number>([
+  ['I', 1],
+  ['II', 2],
+  ['IIA', 2],
+  ['III', 3],
+  ['IV', 4]
+]);
+
+/**
+ * If a tumor stage number can be determined from the given Observation, return
+ * that, otherwise, return null.
+ * @param observation the observation to inspect
+ */
+export function findTumorStage(observation: fhir.Observation & { code?: { coding?: { system?: string, code?: string }[] }, valueString?: string }): number | null {
+  // First check: MCode limits the tumor stages to the LOINC codes
+  // 21908-9, 21902-2, or 21914-7.
+  const coding = observation.code?.coding;
+  if (!coding) {
+    return null;
+  }
+  if (coding.findIndex((value) => { return STAGE_LOINC_CODES.has(value.code); }) < 0) {
+    // Didn't find one of the associated codes
+    return null;
+  }
+  // FIXME: Pretty sure this is actually wrong, but it's the way the front end generates patient data, so for now
+  return STAGE_CODES.get(observation.valueString) ?? null;
 }

@@ -86,19 +86,13 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
       text: trial.trial_phase
     }
   }
-  const includeReference = result.addContainedResource({
+  const eligibilityGroup = result.addContainedResource({
     resourceType: 'Group',
     type: 'person',
     actual: false
   });
-  includeReference.display = trial.inclusion_text;
-  const excludeReference = result.addContainedResource({
-    resourceType: 'Group',
-    type: 'person',
-    actual: false
-  });
-  excludeReference.display = trial.exclusion_text;
-  result.enrollment = [ includeReference, excludeReference ];
+  eligibilityGroup.display = trial.eligibility_criteria;
+  result.enrollment = [ eligibilityGroup ];
   result.principalInvestigator = result.addContainedResource({
     resourceType: 'Practitioner',
     name: [
@@ -125,14 +119,16 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
     };
   });
   // Add locations
-  for (const location of trial.locations) {
-    const fhirLocation = result.addSite(location.facility);
-    // TODO: Will there ever be instances without ZIPs or states?
-    fhirLocation.address = {
-      city: location.city,
-      state: location.state,
-      postalCode: location.zip
-    };
+  for (const country in trial.locations) {
+    for (const location of trial.locations[country]) {
+      const fhirLocation = result.addSite(location.facility);
+      // TODO: Will there ever be instances without ZIPs or states?
+      fhirLocation.address = {
+        city: location.city,
+        state: location.state,
+        postalCode: location.zip
+      };
+    }
   }
   return result;
 }

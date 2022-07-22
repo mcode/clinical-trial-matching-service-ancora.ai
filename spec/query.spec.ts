@@ -21,22 +21,24 @@ import nock from "nock";
 import fs from 'fs';
 import path from 'path';
 
-const exampleTrial = {
+const exampleTrial: AncoraTrial = {
   "trial_id": "NCT00000000",
   "acronym": "N/A",
   "brief_title": "Example Trial",
   "date_posted": "2022-01-15 00:00:00+00:00",
   "date_updated": "2022-02-15 00:00:00+00:00",
   "enrollment": 100,
-  "exclusion_text": "  Exclusion Criteria:\n\n    * Adults unable to consent\n\n    * Prisoners",
-  "inclusion_text": "  Inclusion Criteria:\n\n    * Adults age 18 and older",
+  "eligibility_criteria": "  Exclusion Criteria:\n\n    * Adults unable to consent\n\n    * Prisoners  \n\n  Inclusion Criteria:\n\n    * Adults age 18 and older",
   "primary_purpose": "Treatment",
   "principal_investigator": "Example Doctor, MD, Example Medical Center",
   "recruiting_status": "Recruiting",
   "start_date": "2022-01-21 00:00:00+00:00",
+  "trial_ancora_link": "http://example.com",
   "study_type": "Interventional",
+  "interventions": [],
   "trial_phase": "Not Applicable",
   "trial_summary": "An example trial",
+  "trial_description": "An example description",
   "arms": [
     {
       "arm name": "Control",
@@ -49,21 +51,28 @@ const exampleTrial = {
       "arm description": "Do something"
     }
   ],
-  "locations": [
-    {
-      "city": "Bedford",
-      "zip": "01730",
-      "state": "Massachusetts",
-      "facility": "Example Facility"
-    }
-  ],
+  "locations": {
+    "United States": [
+      {
+        "city": "Bedford",
+        "zip": "01730",
+        "state": "Massachusetts",
+        "country": "United States",
+        "facility": "Example Facility",
+        "status": "Recruiting",
+        "latitude": "FIXME",
+        "longitude": "FIXME"
+      }
+    ]
+  },
   "sponsor": "Example Sponsor",
   "treatments": [
     {
       "treatment_type": "Other",
       "treatment_name": "Test value"
     }
-  ]
+  ],
+  "ancora_match_score": 0.5
 };
 
 describe("createClinicalTrialLookup()", () => {
@@ -112,11 +121,11 @@ describe("isAncoraResponse()", () => {
   });
 
   it("returns true on a matching object", () => {
-    expect(isAncoraResponse({ length: 0, trials: {} })).toBeTrue();
-    expect(isAncoraResponse({ length: 1, trials: { "NCT00000001": exampleTrial } })).toBeTrue();
+    expect(isAncoraResponse([])).toBeTrue();
+    expect(isAncoraResponse([exampleTrial])).toBeTrue();
     // Currently this is true. It may make sense to make it false, but for now,
     // a single invalid trial does not invalidate the array.
-    expect(isAncoraResponse({ length: 1, trials: { "NCT12345678": "invalid" } })).toBeTrue();
+    expect(isAncoraResponse(["invalid"])).toBeTrue();
   });
 });
 
@@ -308,12 +317,7 @@ describe("APIQuery", () => {
 describe("convertResponseToSearchSet()", () => {
   it("converts trials", () => {
     return expectAsync(
-      convertResponseToSearchSet({
-        length: 1,
-        trials: {
-          "NCT00000000": exampleTrial
-        },
-      }).then((searchSet) => {
+      convertResponseToSearchSet([exampleTrial]).then((searchSet) => {
         expect(searchSet.entry.length).toEqual(1);
         expect(searchSet.entry[0].resource).toBeInstanceOf(ResearchStudy);
         expect(
@@ -324,16 +328,7 @@ describe("convertResponseToSearchSet()", () => {
   });
 
   it("skips invalid trials", () => {
-    const response: AncoraResponse = {
-      length: 1,
-      trials: {
-        "NCT00000000": exampleTrial
-      }
-    };
-    // Push on an invalid object
-    response.trials['NCT12345678'] = ({
-      invalidObject: true,
-    } as unknown) as AncoraTrial;
+    const response: AncoraResponse = [exampleTrial,{ invalidObject: true, }];
     return expectAsync(convertResponseToSearchSet(response)).toBeResolved();
   });
 
@@ -348,15 +343,7 @@ describe("convertResponseToSearchSet()", () => {
       }
     );
     return expectAsync(
-      convertResponseToSearchSet(
-        {
-          length: 1,
-          trials: {
-            "NCT00000001": exampleTrial
-          }
-        },
-        backupService
-      )
+      convertResponseToSearchSet([exampleTrial], backupService)
     )
       .toBeResolved()
       .then(() => {
@@ -410,7 +397,7 @@ describe("ClinicalTrialLookup", () => {
   });
 
   it("generates a request", () => {
-    mockRequest.reply(200, { length: 1, trials: {} });
+    mockRequest.reply(200, []);
     return expectAsync(matcher(patientBundle)).toBeResolved();
   });
 
@@ -442,7 +429,7 @@ describe("ClinicalTrialLookup", () => {
     // Simulate a valid response with something that can't be parsed as JSON
     mockRequest.reply(200, "A string that isn't JSON");
     return expectAsync(matcher(patientBundle)).toBeRejectedWithError(
-      "Unable to parse response as JSON"
+      "Unable to parse response from server"
     );
   });
 

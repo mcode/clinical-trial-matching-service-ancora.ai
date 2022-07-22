@@ -13,6 +13,9 @@
 /.nyc_output
 /coverage
 
+# Ignore ct-gov cache
+/ctgov-cache
+
 # System Files
 .DS_Store
 Thumbs.db

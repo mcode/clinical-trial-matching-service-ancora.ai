@@ -2,8 +2,9 @@
  * Handles conversion of patient bundle data to a proper request for matching service apis.
  * Retrieves api response as promise to be used in conversion to fhir ResearchStudy
  */
-import https from "https";
-import { IncomingMessage } from "http";
+
+import util from 'node:util';
+import request from 'request';
 import {
   fhir,
   ClinicalTrialsGovService,
@@ -19,6 +20,8 @@ export interface AncoraAiConfiguration extends ServiceConfiguration {
   endpoint?: string;
   api_key?: string;
 }
+
+let debuglog: util.DebugLoggerFunction = util.debuglog('ancora', (logger) => { debuglog = logger; });
 
 /**
  * Create a new matching function using the given configuration.
@@ -59,6 +62,11 @@ export default createAncoraAiLookup;
  */
 type DateTimeString = string;
 
+export interface AncoraIntervention extends Record<string, string> {
+  intervention_type: string;
+  intervention_name: string;
+}
+
 export interface AncoraTrialArm extends Record<string, string> {
   "arm name": string;
   "arm type": string;
@@ -69,7 +77,12 @@ export interface AncoraTrialLocation extends Record<string, string> {
   city: string;
   zip: string;
   state: string;
+  country: string;
   facility: string;
+  status: string;
+  // The following are strings that are actually numbers
+  latitude: string;
+  longitude: string;
 }
 
 export function isAncoraTrialLocation(o: unknown): o is AncoraTrialLocation {
@@ -96,19 +109,22 @@ export interface AncoraTrial extends Record<string, unknown> {
   date_posted: DateTimeString;
   date_updated: DateTimeString;
   enrollment: number;
-  exclusion_text: string;
-  inclusion_text: string;
+  eligibility_criteria: string;
   primary_purpose: string;
   principal_investigator: string;
   recruiting_status: string;
   start_date: DateTimeString;
+  trial_ancora_link: string;
   study_type: string;
+  interventions: AncoraIntervention[];
   trial_phase: string;
   trial_summary: string;
+  trial_description: string;
   arms: AncoraTrialArm[];
-  locations: AncoraTrialLocation[];
+  locations: Record<string, AncoraTrialLocation[]>;
   sponsor: string;
   treatments: AncoraTrialTreatment[];
+  ancora_match_score: number;
 }
 
 /**
@@ -118,50 +134,44 @@ export interface AncoraTrial extends Record<string, unknown> {
 export function isAncoraTrial(o: unknown): o is AncoraTrial {
   if (typeof o !== "object" || o === null) return false;
   const trial = o as AncoraTrial;
+  // First, check the container types and reject if any of them aren't met
+  if (!(
+    Array.isArray(trial.arms) &&
+    Array.isArray(trial.treatments) &&
+    typeof trial.locations === 'object' && trial.locations != null
+  )) {
+    return false;
+  }
+  // Finally check the types of the various fields
   return typeof trial.trial_id === 'string' &&
     typeof trial.acronym === 'string' &&
     typeof trial.brief_title === 'string' &&
     typeof trial.date_posted === 'string' &&
     typeof trial.date_updated === 'string' &&
     typeof trial.enrollment === 'number' &&
-    typeof trial.exclusion_text === 'string' &&
-    typeof trial.inclusion_text === 'string' &&
+    typeof trial.eligibility_criteria === 'string' &&
     typeof trial.primary_purpose === 'string' &&
     typeof trial.principal_investigator === 'string' &&
     typeof trial.recruiting_status === 'string' &&
     typeof trial.start_date === 'string' &&
+    typeof trial.trial_ancora_link === 'string' &&
     typeof trial.study_type === 'string' &&
     typeof trial.trial_phase === 'string' &&
     typeof trial.trial_summary === 'string' &&
-    Array.isArray(trial.arms) &&
-    Array.isArray(trial.locations) &&
+    typeof trial.trial_description === 'string' &&
     typeof trial.sponsor === 'string' &&
-    Array.isArray(trial.treatments);
+    typeof trial.ancora_match_score === 'number';
 }
 
 // Generic type for the response data being received from the server.
-export interface AncoraResponse extends Record<string, unknown> {
-  length: number;
-  /**
-   * Map of NCT ID to trial.
-   */
-  trials: Record<string, AncoraTrial>;
-}
+export type AncoraResponse = unknown[];
 
 /**
- * Type guard to determine if an object is a valid QueryResponse.
- * @param o the object to determine if it is a QueryResponse
+ * Type guard to determine if an object is a valid AncoraResponse.
+ * @param o the object to determine if it is a AncoraResponse
  */
 export function isAncoraResponse(o: unknown): o is AncoraResponse {
-  if (typeof o !== "object" || o === null) return false;
-
-  // Note that the following DOES NOT check the trials object to make sure every
-  // object within it is valid. Currently this is done later in the process.
-  // This makes this type guard or the AncoraResponse type sort of invalid.
-  // However, the assumption is that a single unparsable trial should not cause
-  // the entire response to be thrown away.
-  const response = o as AncoraResponse;
-  return typeof response.length === 'number' && typeof response.trials === 'object';
+  return Array.isArray(o);
 }
 
 export interface QueryErrorResponse extends Record<string, unknown> {
@@ -181,8 +191,8 @@ export function isQueryErrorResponse(o: unknown): o is QueryErrorResponse {
 export class APIError extends Error {
   constructor(
     message: string,
-    public result: IncomingMessage,
-    public body: string
+    public response: request.Response,
+    public body: unknown
   ) {
     super(message);
   }
@@ -405,14 +415,13 @@ export function convertResponseToSearchSet(
   const studies: ResearchStudy[] = [];
   // For generating IDs
   let id = 0;
-  for (const nctId in response.trials) {
-    const trial = response.trials[nctId];
+  for (const trial of response) {
     if (isAncoraTrial(trial)) {
       studies.push(convertToResearchStudy(trial, id++));
     } else {
       // This trial could not be understood. It can be ignored if that should
       // happen or raised/logged as an error.
-      console.error("Unable to parse trial from server: %o", trial);
+      debuglog('Unable to parse trial from server: %o', trial);
     }
   }
   if (ctgService) {
@@ -443,68 +452,52 @@ function sendQuery(
   ctgService?: ClinicalTrialsGovService
 ): Promise<SearchSet> {
   return new Promise((resolve, reject) => {
-    const body = Buffer.from(JSON.stringify(query.toQuery()), "utf8");
-
-    const request = https.request(
-      endpoint,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json; charset=UTF-8",
-          "Content-Length": body.byteLength.toString(),
-          "X-Api-Key": apiKey,
-        },
-      },
-      (result) => {
-        let responseBody = "";
-        result.on("data", (chunk) => {
-          responseBody += chunk;
-        });
-        result.on("end", () => {
-          console.log("Complete");
-          if (result.statusCode === 200) {
-            let json: unknown;
-            try {
-              json = JSON.parse(responseBody) as unknown;
-            } catch (ex) {
-              reject(
-                new APIError(
-                  "Unable to parse response as JSON",
-                  result,
-                  responseBody
-                )
-              );
-              return;
-            }
-            if (isAncoraResponse(json)) {
-              resolve(convertResponseToSearchSet(json, ctgService));
-            } else if (isQueryErrorResponse(json)) {
-              reject(
-                new APIError(
-                  `Error from service: ${json.error}`,
-                  result,
-                  responseBody
-                )
-              );
-            } else {
-              reject(new Error("Unable to parse response from server"));
-            }
-          } else {
-            reject(
-              new APIError(
-                `Server returned ${result.statusCode} ${result.statusMessage}`,
-                result,
-                responseBody
-              )
-            );
-          }
-        });
+    const queryJsonObject = query.toQuery();
+    debuglog('Running query: %o', queryJsonObject);
+    request({
+      method: 'POST',
+      uri: endpoint,
+      gzip: true,
+      json: true,
+      body: queryJsonObject,
+      headers: {
+        "X-Api-Key": apiKey
       }
-    );
-
-    request.on("error", (error) => reject(error));
-
-    request.write(body);
-    request.end();
-  });
+    },
+    (error, response, result: unknown) => {
+      if (error) {
+        debuglog('ERROR while sending requeset: %o', error);
+        // An error occurred
+        reject(error);
+        return;
+      }
+      debuglog('Received response: %d %s', response.statusCode, response.statusMessage);
+      debuglog('Headers: %o', response.headers);
+      if (response.statusCode === 200) {
+        debuglog('Response object: %j', result);
+        // Response object should be an array
+        if (Array.isArray(result)) {
+          resolve(convertResponseToSearchSet(result, ctgService));
+        } else if (isQueryErrorResponse(result)) {
+          reject(
+            new APIError(
+              `Error from service: ${result.error}`,
+              response,
+              result
+            )
+          );
+        } else {
+          reject(new Error("Unable to parse response from server"));
+        }
+      } else {
+        reject(
+          new APIError(
+            `Server returned ${response.statusCode} ${response.statusMessage}`,
+            response,
+            result
+          )
+        );
+      }
+    }); // request
+  }); // Promise
 }

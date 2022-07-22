@@ -32,8 +32,7 @@ function scanResults(results: AncoraResponse): void {
   const studyTypes = new Set<string>();
   const treatmentTypes = new Set<string>();
   const seenKeys = new Map<string, Set<string>>();
-  for (const nctId in results.trials) {
-    const trial = results.trials[nctId];
+  for (const trial of results) {
     if (isAncoraTrial(trial)) {
       recruitingStatusTypes.add(trial.recruiting_status);
       phases.add(trial.trial_phase);
@@ -52,10 +51,12 @@ function scanResults(results: AncoraResponse): void {
         types.add(Array.isArray(trial[key]) ? 'Array' : typeof trial[key]);
       }
       // make sure locations are all valid as far as we know
-      for (const location of trial.locations) {
-        if (!isAncoraTrialLocation(location)) {
-          console.error('Warning: Invalid location found:');
-          console.error(JSON.stringify(location, null, 2));
+      for (const country in trial.locations) {
+        for (const location of trial.locations[country]) {
+          if (!isAncoraTrialLocation(location)) {
+            console.error('Warning: Invalid location found:');
+            console.error(JSON.stringify(location, null, 2));
+          }
         }
       }
     } else {

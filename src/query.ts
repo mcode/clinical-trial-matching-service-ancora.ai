@@ -188,6 +188,14 @@ export class APIError extends Error {
   }
 }
 
+// Add extension to condition
+type ConditionWithExtension = fhir.Condition & {
+  extension?: {
+    url?: string;
+    valueCodeableConcept?: fhir.CodeableConcept;
+  }[];
+}
+
 /**
  * This class represents a query, built based on values from within the patient
  * bundle.
@@ -270,7 +278,11 @@ export class AncoraAPIQuery {
    * Looks up and adds a code to the query.
    * @param code the code to add
    */
-  _addCode(code: { system: string, code: string }): void {
+  _addCode(code: { system?: string, code?: string }): void {
+    // Ignore invalid stuff sent to this
+    if (typeof code !== 'object' || code === null || typeof code.system !== 'string' || typeof code.code !== 'string') {
+      return;
+    }
     const flags = findQueryFlagsForCode(code.system, code.code);
     if (flags) {
       for (const flag of flags) {
@@ -291,6 +303,23 @@ export class AncoraAPIQuery {
       if (diseaseType !== null) {
         // For now, if multiple types match, just take the last one seen
         this.typeOfDisease = diseaseType;
+      }
+    }
+    // Also check to see if the condition has an extension with the histology set
+    // FIXME: Service library type is missing the extension, so force it in:
+    const condExt = condition as unknown as ConditionWithExtension;
+    if (Array.isArray(condExt.extension)) {
+      // Go through the extensions
+      for (const extension of condExt.extension) {
+        if (extension.url === 'http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-histology-morphology-behavior') {
+          // Check if this type is recognized
+          if (extension.valueCodeableConcept && Array.isArray(extension.valueCodeableConcept.coding)) {
+            // For now, just add the code directly
+            for (const code of extension.valueCodeableConcept.coding) {
+              this._addCode(code);
+            }
+          }
+        }
       }
     }
   }

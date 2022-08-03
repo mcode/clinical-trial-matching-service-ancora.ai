@@ -12,13 +12,13 @@
   country: string;
   /**
    * What is the type of cancer
-   * Breast Cancer, Cervical Cancer, Lung Cancer, Melanoma,  Colorectal Cancer, Kidney Cancer, Prostate Cancer, Liver Cancer, Pancreatic Cancer, Cholangiocarcinoma, Esophageal Cancer, Gastric Cancer, Acute Myeloid Leukemia, Myeloma
+   * breast_cancer, cervical_cancer, lung_cancer, melanoma, colorectal_cancer, kidney_cancer, prostate_cancer, liver_cancer, pancreatic_cancer, cholangiocarcinoma, esophageal_cancer, gastric_cancer, acute_myeloid_leukemia, myeloma
    */
-  type_of_disease: "Breast Cancer" | "Cervical Cancer" | "Lung Cancer" |
-    "Melanoma" | "Colorectal Cancer" | "Kidney Cancer" | "Prostate Cancer" |
-    "Liver Cancer" | "Pancreatic Cancer" | "Cholangiocarcinoma" |
-    "Esophageal Cancer" | "Gastric Cancer" | "Acute Myeloid Leukemia" |
-    "Myeloma";
+  type_of_disease: "breast_cancer" | "cervical_cancer" | "lung_cancer" |
+    "melanoma" | "colorectal_cancer" | "kidney_cancer" | "prostate_cancer" |
+    "liver_cancer" | "pancreatic_cancer" | "cholangiocarcinoma" |
+    "esophageal_cancer" | "gastric_cancer" | "acute_myeloid_leukemia" |
+    "myeloma";
 
   location?: {
     lat: number,

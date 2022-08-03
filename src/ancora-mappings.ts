@@ -338,7 +338,7 @@ export type AncoraQueryDisease = AncoraQuery['type_of_disease'];
 // Map of Ancora query diseases to SNOMED codes
 const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
   [
-    'Cervical Cancer',
+    'cervical_cancer',
     [
       '363354003', '372024009', '208041000119100', '184781000119102',
       '1197350005', '1197268005', '1197263001', '1156807006', '773775004',
@@ -354,7 +354,7 @@ const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
     ]
   ],
   [
-    'Pancreatic Cancer',
+    'pancreatic_cancer',
     [
       '1197286008', '1197283000', '1197279000', '1187521002', '1187519007',
       '1148551007', '792907004', '785879009', '783771003', '783706007',
@@ -373,7 +373,7 @@ const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
     ]
   ],
   [
-    'Acute Myeloid Leukemia',
+    'acute_myeloid_leukemia',
     [
       '351251000119103', '12291000132102', '12281000132104', '1162531007',
       '1157157006', '1148906001', '838355002', '780844005', '773537001',
@@ -398,7 +398,7 @@ const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
     ]
   ],
   [
-    'Kidney Cancer',
+    'kidney_cancer',
     [
       '894171571000119000', '763101411000119000', '15959101000119100',
       '15959061000119100', '15958101000119100', '15958021000119100',
@@ -416,7 +416,7 @@ const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
     ]
   ],
   [
-    'Esophageal Cancer',
+    'esophageal_cancer',
     [
       '128041000119107', '1156810004', '783704005', '783183009', '722533007',
       '721628002', '721626003', '721625004', '721624000', '721623006',
@@ -433,7 +433,7 @@ const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
     ]
   ],
   [
-    'Liver Cancer',
+    'liver_cancer',
     [
       '1208349005', '1197204009', '1153383006', '787091002', '408646000',
       '314963000', '254601002', '253018005', '187777008',
@@ -445,7 +445,7 @@ const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
     ]
   ],
   [
-    'Cholangiocarcinoma',
+    'cholangiocarcinoma',
     [
       '1144891007', '865951006', '721716004', '312104005', '253017000',
       '274902006', '1186631005',
@@ -454,7 +454,7 @@ const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
     ]
   ],
   [
-    'Melanoma',
+    'melanoma',
     [
       '985355341000119000', '939595491000119000', '808558991000119000',
       '400375351000119000', '249389151000119000', '243971001000119000',
@@ -495,7 +495,7 @@ const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
     ]
   ],
   [
-    'Gastric Cancer',
+    'gastric_cancer',
     [
       '681941000119107', '681781000119104', '681701000119107',
       '681681000119109', '681631000119108', '878807001', '860830009',
@@ -516,7 +516,7 @@ const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
     ]
   ],
   [
-    'Prostate Cancer',
+    'prostate_cancer',
     [
       '1208457007', '823017009', '822970008', '712849003', '449318001',
       '448217003', '448213004', '399490008', '396198006', '278060005',
@@ -526,7 +526,7 @@ const diseasesToCodes = new Map<AncoraQueryDisease, string[]>([
     ]
   ],
   [
-    'Colorectal Cancer',
+    'colorectal_cancer',
     [
       '363406005'
     ]

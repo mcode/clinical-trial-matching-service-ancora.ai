@@ -198,14 +198,6 @@ export class APIError extends Error {
   }
 }
 
-// Add extension to condition
-type ConditionWithExtension = fhir.Condition & {
-  extension?: {
-    url?: string;
-    valueCodeableConcept?: fhir.CodeableConcept;
-  }[];
-}
-
 /**
  * This class represents a query, built based on values from within the patient
  * bundle.
@@ -316,11 +308,9 @@ export class AncoraAPIQuery {
       }
     }
     // Also check to see if the condition has an extension with the histology set
-    // FIXME: Service library type is missing the extension, so force it in:
-    const condExt = condition as unknown as ConditionWithExtension;
-    if (Array.isArray(condExt.extension)) {
+    if (Array.isArray(condition.extension)) {
       // Go through the extensions
-      for (const extension of condExt.extension) {
+      for (const extension of condition.extension) {
         if (extension.url === 'http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-histology-morphology-behavior') {
           // Check if this type is recognized
           if (extension.valueCodeableConcept && Array.isArray(extension.valueCodeableConcept.coding)) {

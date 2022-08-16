@@ -229,7 +229,7 @@ describe("APIQuery", () => {
     });
     expect(query._criterions.flt3_itd).toBeTrue();
     expect(query._criterions.braf_therapy).toBeTrue();
-    expect(query.typeOfDisease).toEqual("Pancreatic Cancer");
+    expect(query.typeOfDisease).toEqual("pancreatic_cancer");
   });
 
   it("converts the query to a string", () => {
@@ -262,11 +262,11 @@ describe("APIQuery", () => {
             },
           },
         ],
-      }, "Breast Cancer").toString()
+      }, "breast_cancer").toString()
     ).toEqual(
       // This is probably stable as of ECMAScript 2015 which should cover
       // supported versions of Node.js
-      '[AncoraAPIQuery {"country":"US","criterions":{},"type_of_disease":"Breast Cancer","radius":25,"radius_unit":"MI"}]'
+      '[AncoraAPIQuery {"country":"US","criterions":{},"type_of_disease":"breast_cancer","radius":25,"radius_unit":"MI"}]'
     );
   });
 
@@ -309,7 +309,7 @@ describe("APIQuery", () => {
     const jsonString = await fs.promises.readFile(path.resolve(__dirname, '../../spec/data/patient_bundle.json'), {encoding: 'utf-8'});
     const bundle = JSON.parse(jsonString) as fhir.Bundle;
     const query = new AncoraAPIQuery(bundle);
-    expect(query.typeOfDisease).toEqual('Colorectal Cancer');
+    expect(query.typeOfDisease).toEqual('colorectal_cancer');
     expect(query._criterions.tumor_stage).toEqual(2);
   });
 });

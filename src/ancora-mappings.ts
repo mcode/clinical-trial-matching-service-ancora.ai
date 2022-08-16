@@ -571,7 +571,7 @@ const STAGE_CODES = new Map<string, number>([
  * that, otherwise, return null.
  * @param observation the observation to inspect
  */
-export function findTumorStage(observation: fhir.Observation & { code?: { coding?: { system?: string, code?: string }[] }, valueString?: string }): number | null {
+export function findTumorStage(observation: fhir.Observation): number | null {
   // First check: MCode limits the tumor stages to the LOINC codes
   // 21908-9, 21902-2, or 21914-7.
   const coding = observation.code?.coding;

@@ -124,7 +124,6 @@ export interface AncoraTrial extends Record<string, unknown> {
   locations: Record<string, AncoraTrialLocation[]>;
   sponsor: string;
   treatments: AncoraTrialTreatment[];
-  ancora_match_score: number;
 }
 
 /**
@@ -159,8 +158,7 @@ export function isAncoraTrial(o: unknown): o is AncoraTrial {
     typeof trial.trial_phase === 'string' &&
     typeof trial.trial_summary === 'string' &&
     typeof trial.trial_description === 'string' &&
-    typeof trial.sponsor === 'string' &&
-    typeof trial.ancora_match_score === 'number';
+    typeof trial.sponsor === 'string';
 }
 
 // Generic type for the response data being received from the server.

@@ -266,7 +266,7 @@ describe("APIQuery", () => {
     ).toEqual(
       // This is probably stable as of ECMAScript 2015 which should cover
       // supported versions of Node.js
-      '[AncoraAPIQuery {"country":"US","criterions":{},"type_of_disease":"breast_cancer","radius":25,"radius_unit":"MI"}]'
+      '[AncoraAPIQuery {"country":"US","criterions":{},"type_of_disease":"breast_cancer","zip_code":"01730","radius":25,"radius_unit":"MI"}]'
     );
   });
 

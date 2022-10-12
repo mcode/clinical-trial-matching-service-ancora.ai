@@ -10,6 +10,13 @@
    * Two digit [sic] country code (presumably ISO-3166 alpha-2 codes?)
    */
   country: string;
+
+  /**
+   * What is the zip code for the request (then we limit to 400 km/ mi radius)
+   * 02108'
+   */
+  zip_code?: string;
+
   /**
    * What is the type of cancer
    * breast_cancer, cervical_cancer, lung_cancer, melanoma, colorectal_cancer, kidney_cancer, prostate_cancer, liver_cancer, pancreatic_cancer, cholangiocarcinoma, esophageal_cancer, gastric_cancer, acute_myeloid_leukemia, myeloma
@@ -492,11 +499,6 @@ export interface AncoraCriteria {
    * US, UK, ES, CH
    */
   country_code?: "US" | "UK" | "ES" | "CH";
-  /**
-   * What is the zip code for the request (then we limit to 400 km/ mi radius)
-   * 02108'
-   */
-  zip_code?: string;
   /**
    * Has the patient had chemotherapy administered
    * true, false

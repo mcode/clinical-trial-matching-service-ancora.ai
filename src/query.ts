@@ -368,7 +368,10 @@ export class AncoraAPIQuery {
       criterions: this._criterions,
       type_of_disease: this.typeOfDisease
     };
-    if (this._travelRadius != null) {
+    if (this._zipCode !== null) {
+      query.zip_code = this._zipCode;
+    }
+    if (this._travelRadius !== null) {
       query.radius = this._travelRadius;
       query.radius_unit = 'MI';
     }

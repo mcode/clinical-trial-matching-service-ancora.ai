@@ -71,7 +71,8 @@ const writeCSVLine = (out: WriteStream, data: unknown[]): void => {
 // Patient info
 interface PatientInfo {
   mrn: string;
-  conditions: string[];
+  // This is an array of string, string tuples: system, code
+  conditions: [string, string][];
   medications: string[];
   observations: string[];
   stage: string;
@@ -79,6 +80,24 @@ interface PatientInfo {
 
 function randomCode(codes: string[]): string {
   return codes[Math.floor(Math.random() * codes.length)];
+}
+
+function randomCodeSystem(codes: Map<string, string[]>): [string, string] {
+  let totalCodes = 0;
+  for (const codeList of codes.values()) {
+    totalCodes += codeList.length;
+  }
+  // This assumes the lists are small enough that iterating is fine. Since
+  // the max length at present is two, this is the case.
+  let pickedCode = Math.floor(Math.random() * totalCodes);
+  for (const [system, codeList] of codes.entries()) {
+    if (pickedCode < codeList.length) {
+      return [system, codeList[pickedCode]];
+    }
+    pickedCode -= codeList.length;
+  }
+  // Getting here should, in theory, be impossible
+  throw new Error('Failed to pick a random code');
 }
 
 /**
@@ -94,7 +113,7 @@ function* generatePatients(): Generator<string[], PatientInfo[]> {
   for (const codes of ancoraDiseaseCodes.values()) {
     const patient: PatientInfo = {
       mrn: generateMRN(id++),
-      conditions: [ randomCode(codes) ],
+      conditions: [ randomCodeSystem(codes) ],
       medications: [],
       observations: [],
       stage: '3C',
@@ -135,7 +154,7 @@ function* generateConditions(patients: PatientInfo[]): Generator<string[], void>
   let id = 0;
   for (const patient of patients) {
     for (const condition of patient.conditions) {
-      yield [patient.mrn, `condition-${id++}`, SNOMED_CT_SYSTEM, condition, '-', 'encounter-diagnosis', '2020-01-01','','','','',''];
+      yield [patient.mrn, `condition-${id++}`, condition[0], condition[1], '-', 'encounter-diagnosis', '2020-01-01','','','','',''];
     }
   }
 }

@@ -9,8 +9,7 @@ import {
   ancoraCriterionCodes,
   ancoraDiseaseCodes,
   AncoraQueryDisease,
-  FhirSystem,
-  SNOMED_CT_SYSTEM
+  FhirSystem
 } from './ancora-mapping-data';
 
 // TODO: Don't know how to code the following:
@@ -67,24 +66,35 @@ export function findQueryFlagsForCode(system: string, code: string): AncoraCrite
 }
 
 // Ancora disease codes also need to be flipped around for use
-const codesToDiseaseType = new Map<string, AncoraQueryDisease>();
+const codesToDiseaseType = new Map<string, Map<string, AncoraQueryDisease>>();
 
-for (const [disease, codes] of ancoraDiseaseCodes) {
-  for (const code of codes) {
-    const existing = codesToDiseaseType.get(code);
-    if (existing) {
-      console.error(`Warning: trying to map ${code} to ${disease} when it is already mapped to ${existing}, keeping original mapping to ${existing}!`);
-    } else {
-      codesToDiseaseType.set(code, disease);
+function diseaseMappingFor(system: string): Map<string, AncoraQueryDisease> {
+  let mapping = codesToDiseaseType.get(system);
+  if (!mapping) {
+    mapping = new Map<string, AncoraQueryDisease>();
+    codesToDiseaseType.set(system, mapping);
+  }
+  return mapping;
+}
+
+for (const [disease, mappings] of ancoraDiseaseCodes) {
+  for (const [system, codes] of mappings) {
+    const diseaseMappings = diseaseMappingFor(system);
+    for (const code of codes) {
+      // Check for accidental duplicates
+      const existing = findDiseaseTypeForCode(system, code);
+      if (existing) {
+        console.error(`Warning: trying to map ${code} to ${disease} when it is already mapped to ${existing}, keeping original mapping to ${existing}!`);
+      } else {
+        diseaseMappings.set(code, disease);
+      }
     }
   }
 }
 
 export function findDiseaseTypeForCode(system: string, code: string): AncoraQueryDisease | null {
-  if (system != SNOMED_CT_SYSTEM) {
-    return null;
-  }
-  return codesToDiseaseType.get(code) ?? null;
+  // Look up the system, then, if it exists, the code - otherwise, resolve to null
+  return codesToDiseaseType.get(system)?.get(code) ?? null;
 }
 
 // Tumor Stage mappings

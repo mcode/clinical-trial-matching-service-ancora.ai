@@ -3,7 +3,8 @@
  * the underlying service to the FHIR ResearchStudy type.
  */
 
-import { ResearchStudy, fhir, CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL } from 'clinical-trial-matching-service';
+import { ResearchStudy, CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL } from 'clinical-trial-matching-service';
+import { ResearchStudyArm, ResearchStudy as FhirResearchStudy } from 'fhir/r4';
 import { AncoraTrial } from './query';
 
 function convertToFhirConstant(displayString: string) {
@@ -21,7 +22,7 @@ function parsePrimaryPurpose(display: string): string | null {
 }
 
 // Mapping between recruiting_status and the status in FHIR
-const recruitingStatusMapping = new Map<string, fhir.ResearchStudyStatus>([
+const recruitingStatusMapping = new Map<string, FhirResearchStudy["status"]>([
   // FIXME: What is the difference between Available and Recruiting? Does it matter?
   ['Available', 'active'],
   ['Recruiting', 'active'],
@@ -108,7 +109,7 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
     resourceType: 'Organization',
     name: trial.sponsor
   });
-  result.arm = trial.arms.map<fhir.Arm>(arm => {
+  result.arm = trial.arms.map<ResearchStudyArm>(arm => {
     return {
       name: arm["arm name"],
       description: arm["arm name"],

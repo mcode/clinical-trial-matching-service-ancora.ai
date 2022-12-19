@@ -22,7 +22,7 @@
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
-    "clinical-trial-matching-service": "^0.0.6",
+    "clinical-trial-matching-service": "^0.0.7",
     "dotenv-flow": "^3.2.0",
     "request": "^2.88.2"
   },
@@ -35,9 +35,9 @@
     "@types/node": "^18.0.3",
     "@types/request": "^2.48.8",
     "@types/supertest": "^2.0.9",
-    "@typescript-eslint/eslint-plugin": "^4.11.1",
-    "@typescript-eslint/parser": "^4.11.1",
-    "eslint": "^7.17.0",
+    "@typescript-eslint/eslint-plugin": "^5.46.1",
+    "@typescript-eslint/parser": "^5.46.1",
+    "eslint": "^8.30.0",
     "fhir": "^4.7.9",
     "jasmine": "^4.2.0",
     "nock": "^13.0.5",

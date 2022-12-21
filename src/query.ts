@@ -371,7 +371,11 @@ export class AncoraAPIQuery {
     if (this._zipCode !== null) {
       query.zip_code = this._zipCode;
     }
-    if (this._travelRadius !== null) {
+    if (this._travelRadius === null) {
+      // Set a default since the radius is required
+      query.radius = 100;
+      query.radius_unit = 'MI';
+    } else {
       query.radius = this._travelRadius;
       query.radius_unit = 'MI';
     }

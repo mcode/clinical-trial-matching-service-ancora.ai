@@ -8,6 +8,7 @@ import { AncoraCriterionFlag } from './ancora-query';
 import {
   ancoraCriterionCodes,
   ancoraDiseaseCodes,
+  ancoraStageMappings,
   AncoraQueryDisease,
   FhirSystem
 } from './ancora-mapping-data';
@@ -99,20 +100,48 @@ export function findDiseaseTypeForCode(system: string, code: string): AncoraQuer
 
 // Tumor Stage mappings
 
+// Again, need to flip them around
+const codesToTumorStages = new Map<string, Map<string, number>>();
+function tumorStageMappingsFor(system: string): Map<string, number> {
+  let mappings = codesToTumorStages.get(system);
+  if (!mappings) {
+    mappings = new Map<string, number>();
+    codesToTumorStages.set(system, mappings);
+  }
+  return mappings;
+}
+
+for (const [tumorStage, mappings] of ancoraStageMappings) {
+  for (const [system, codes] of mappings) {
+    // First, grab the stage mappings
+    const stageMappings = tumorStageMappingsFor(system);
+    for (const code of codes) {
+      const existing = tumorStageForCode(system, code);
+      if (existing) {
+        console.error(`Warning: trying to map ${code} to stage ${tumorStage} when it is already mapped to ${existing}, keeping original mapping to ${existing}!`);
+      } else {
+        stageMappings.set(code, tumorStage);
+      }
+    }
+  }
+}
+
+export function tumorStageForCode(system: string | undefined, code: string | undefined): number | undefined {
+  // Reject undefined values immediately
+  if (typeof system === 'undefined' || typeof code === 'undefined') {
+    return undefined;
+  }
+  return codesToTumorStages.get(system)?.get(code);
+}
+
 const STAGE_LOINC_CODES = new Set<string>(['21908-9', '21902-2', '21914-7']);
-// FIXME: This is wrong but is the way the front end generates the stages so ??
-const STAGE_CODES = new Map<string, number>([
-  ['I', 1],
-  ['II', 2],
-  ['IIA', 2],
-  ['III', 3],
-  ['IV', 4]
-]);
 
 /**
  * If a tumor stage number can be determined from the given Observation, return
  * that, otherwise, return null.
  * @param observation the observation to inspect
+ * @return the tumor stage, from 0-4. Note that 0 is falsey, so check "!== null"
+ *   to determine if a value was returned.
  */
 export function findTumorStage(observation: Observation): number | null {
   // First check: MCode limits the tumor stages to the LOINC codes
@@ -125,6 +154,16 @@ export function findTumorStage(observation: Observation): number | null {
     // Didn't find one of the associated codes
     return null;
   }
-  // FIXME: Pretty sure this is actually wrong, but it's the way the front end generates patient data, so for now
-  return STAGE_CODES.get(observation.valueString) ?? null;
+  const stagingCodes = observation.valueCodeableConcept?.coding;
+  if (stagingCodes) {
+    // See if we recognize any of the codes
+    for (const code of stagingCodes) {
+      const tumorStage = tumorStageForCode(code.system, code.code);
+      // 0 is a valid stage and if(0) is false
+      if (typeof tumorStage === 'number') {
+        return tumorStage;
+      }
+    }
+  }
+  return null;
 }

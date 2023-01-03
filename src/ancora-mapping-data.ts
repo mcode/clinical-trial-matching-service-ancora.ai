@@ -597,3 +597,64 @@ export const ancoraDiseaseCodes = new Map<AncoraQueryDisease, Map<FhirSystem, st
     ])
   ],
 ]);
+
+// This is sort of silly because they're actually continuous 0-4 so an array
+// would totally work, but really it's a map of stages to their codes
+export const ancoraStageMappings = new Map<number, Map<FhirSystem, string[]>>([
+  [
+    0,
+    new Map<FhirSystem, string[]>([
+      [
+        SNOMED_CT_SYSTEM,
+        [
+          "261613009", "261644000", "261645004"
+        ]
+      ]
+    ]),
+  ],
+  [
+    1,
+    new Map<FhirSystem, string[]>([
+      [
+        SNOMED_CT_SYSTEM,
+        [
+          "258215001", "261632003", "261633008", "261634002", "261635001",
+          "261636000", "261641008", "313112008", "313114009", "313143001"
+        ]
+      ]
+    ]),
+  ],
+  [
+    2,
+    new Map<FhirSystem, string[]>([
+      [
+        SNOMED_CT_SYSTEM,
+        [
+          "258219007", "261614003", "261615002", "261637009"
+        ]
+      ]
+    ])
+  ],
+  [
+    3,
+    new Map<FhirSystem, string[]>([
+      [
+        SNOMED_CT_SYSTEM,
+        [
+          "258224005", "261638004", "261639007", "261640009"
+        ]
+      ]
+    ])
+  ],
+  [
+    4,
+    new Map<FhirSystem, string[]>([
+      [
+        SNOMED_CT_SYSTEM,
+        [
+          "258228008", "261616001", "261642001", "261643006", "313046007"
+        ]
+      ]
+    ])
+  ],
+]);

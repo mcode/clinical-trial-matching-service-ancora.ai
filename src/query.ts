@@ -6,12 +6,12 @@
 import util from 'node:util';
 import request from 'request';
 import {
-  fhir,
   ClinicalTrialsGovService,
   ServiceConfiguration,
   ResearchStudy,
   SearchSet,
 } from "clinical-trial-matching-service";
+import { Bundle, Condition, MedicationStatement, Observation } from 'fhir/r4';
 import convertToResearchStudy from "./researchstudy-mapping";
 import { AncoraCriteria, AncoraQuery } from './ancora-query';
 import { findQueryFlagsForCode, findDiseaseTypeForCode, findTumorStage } from './ancora-mappings';
@@ -34,7 +34,7 @@ let debuglog: util.DebugLoggerFunction = util.debuglog('ancora', (logger) => { d
 export function createAncoraAiLookup(
   configuration: AncoraAiConfiguration,
   ctgService?: ClinicalTrialsGovService
-): (patientBundle: fhir.Bundle) => Promise<SearchSet> {
+): (patientBundle: Bundle) => Promise<SearchSet> {
   // Raise errors on missing configuration
   if (typeof configuration.endpoint !== "string") {
     throw new Error("Missing endpoint in configuration");
@@ -45,7 +45,7 @@ export function createAncoraAiLookup(
   const endpoint = configuration.endpoint;
   const apiKey = configuration.api_key;
   return function getMatchingClinicalTrials(
-    patientBundle: fhir.Bundle
+    patientBundle: Bundle
   ): Promise<SearchSet> {
     // Create the query based on the patient bundle:
     const query = new AncoraAPIQuery(patientBundle);
@@ -236,7 +236,7 @@ export class AncoraAPIQuery {
    * @param defaultTypeOfDisease type of disease to default to if no disease can
    *   be found within the patient data
    */
-  constructor(patientBundle: fhir.Bundle, defaultTypeOfDisease?: AncoraQuery['type_of_disease']) {
+  constructor(patientBundle: Bundle, defaultTypeOfDisease?: AncoraQuery['type_of_disease']) {
     // Build the internal criterions object.
     this._criterions = {};
     if (defaultTypeOfDisease) {
@@ -295,7 +295,7 @@ export class AncoraAPIQuery {
    * Adds a condition. Looks at the code and set flags based on known codes.
    * @param condition the condition to add
    */
-  addCondition(condition: fhir.Condition): void {
+  addCondition(condition: Condition): void {
     for (const coding of condition.code.coding) {
       this._addCode(coding);
       // Also see if this is a known disease type
@@ -326,7 +326,7 @@ export class AncoraAPIQuery {
    * Adds an observation. Looks at the code and set flags based on known codes.
    * @param observation the observation to add
    */
-  addObservation(observation: fhir.Observation): void {
+  addObservation(observation: Observation): void {
     if (observation.valueCodeableConcept) {
       for (const coding of observation.valueCodeableConcept.coding) {
         this._addCode(coding);
@@ -344,9 +344,9 @@ export class AncoraAPIQuery {
    * known codes.
    * @param medicationStatement the medication statement to add
    */
-  addMedicationStatement(medicationStatement: fhir.MedicationStatement): void {
+  addMedicationStatement(medicationStatement: MedicationStatement): void {
     // Turns out this uses the same properties as Condition
-    for (const coding of medicationStatement.code.coding) {
+    for (const coding of medicationStatement.medicationCodeableConcept.coding) {
       this._addCode(coding);
     }
   }

@@ -3,7 +3,8 @@
  * the underlying service to the FHIR ResearchStudy type.
  */
 
-import { ResearchStudy, fhir, CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL } from 'clinical-trial-matching-service';
+import { ResearchStudy, CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL } from 'clinical-trial-matching-service';
+import { CodeableConcept, ResearchStudyArm, ResearchStudy as FhirResearchStudy } from 'fhir/r4';
 import { AncoraTrial } from './query';
 
 function convertToFhirConstant(displayString: string) {
@@ -15,13 +16,20 @@ const primaryPurposes = new Set<string>([
   'health-services-research', 'basic-science', 'device-feasibility'
 ]);
 
-function parsePrimaryPurpose(display: string): string | null {
+function parsePrimaryPurpose(display: string): CodeableConcept | undefined {
   const fhirValue = convertToFhirConstant(display);
-  return primaryPurposes.has(fhirValue) ? fhirValue : null;
+  return primaryPurposes.has(fhirValue) ? {
+    coding: [
+      {
+        code: fhirValue
+      }
+    ],
+    text: fhirValue
+  } : undefined;
 }
 
 // Mapping between recruiting_status and the status in FHIR
-const recruitingStatusMapping = new Map<string, fhir.ResearchStudyStatus>([
+const recruitingStatusMapping = new Map<string, FhirResearchStudy["status"]>([
   // FIXME: What is the difference between Available and Recruiting? Does it matter?
   ['Available', 'active'],
   ['Recruiting', 'active'],
@@ -51,7 +59,6 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
    * date_posted: DateTimeString; - don't have a good place to map this
    * date_updated: DateTimeString; - don't have a good place to map this
    * enrollment: number; - don't think this has a mapping
-   * primary_purpose: string; - the ResearchStudy type is currently missing primary_purpose
    * start_date: DateTimeString; - the ResearchStudy type is currently missing period
    * study_type: string; - don't have a good place to map this
    * treatments: AncoraTrialTreatment[]; - don't have a good place to map this
@@ -86,6 +93,8 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
       text: trial.trial_phase
     }
   }
+  // The ResearchStudy type is currently missing primary purpose
+  (result as FhirResearchStudy).primaryPurposeType = parsePrimaryPurpose(trial.primary_purpose);
   const eligibilityGroup = result.addContainedResource({
     resourceType: 'Group',
     type: 'person',
@@ -108,7 +117,7 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
     resourceType: 'Organization',
     name: trial.sponsor
   });
-  result.arm = trial.arms.map<fhir.Arm>(arm => {
+  result.arm = trial.arms.map<ResearchStudyArm>(arm => {
     return {
       name: arm["arm name"],
       description: arm["arm name"],

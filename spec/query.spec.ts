@@ -275,6 +275,58 @@ describe("APIQuery", () => {
     );
   });
 
+  it("parses Ecog scores", () => {
+    const query = new AncoraAPIQuery({
+      resourceType: "Bundle",
+      type: "collection",
+      entry: [
+        {
+          resource: {
+            resourceType: "Observation",
+            subject: {},
+            status: "final",
+            code: {
+              coding: [
+                {
+                  system: "http://loinc.org",
+                  code: "89247-1",
+                },
+              ],
+            },
+            valueInteger: 2
+          },
+        },
+      ]
+    }, "breast_cancer");
+    expect(query._criterions.ecog).toEqual(2);
+  });
+
+  it("parses Karnofsky scores", () => {
+    const query = new AncoraAPIQuery({
+      resourceType: "Bundle",
+      type: "collection",
+      entry: [
+        {
+          resource: {
+            resourceType: "Observation",
+            subject: {},
+            status: "final",
+            code: {
+              coding: [
+                {
+                  system: "http://loinc.org",
+                  code: "89243-0",
+                },
+              ],
+            },
+            valueInteger: 80
+          },
+        },
+      ]
+    }, "breast_cancer");
+    expect(query._criterions.karnofsky).toEqual(80);
+  });
+
   it("ignores unknown parameters", () => {
     // Passing in this case is simply "not raising an exception"
     new AncoraAPIQuery({
@@ -315,7 +367,9 @@ describe("APIQuery", () => {
     const bundle = JSON.parse(jsonString) as Bundle<FhirResource>;
     const query = new AncoraAPIQuery(bundle);
     expect(query.typeOfDisease).toEqual('colorectal_cancer');
-    expect(query._criterions.tumor_stage).toEqual(2);
+    expect(query._criterions.ecog).toEqual(3);
+    expect(query._criterions.karnofsky).toEqual(60);
+    expect(query._criterions.tumor_stage).toEqual(3);
   });
 });
 

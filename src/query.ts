@@ -13,6 +13,7 @@ import {
 } from "clinical-trial-matching-service";
 import { Bundle, Condition, MedicationStatement, Observation } from 'fhir/r4';
 import convertToResearchStudy from "./researchstudy-mapping";
+import { LOINC_SYSTEM } from './ancora-mapping-data';
 import { AncoraCriteria, AncoraQuery } from './ancora-query';
 import { findQueryFlagsForCode, findDiseaseTypeForCode, findTumorStage } from './ancora-mappings';
 
@@ -330,6 +331,23 @@ export class AncoraAPIQuery {
     if (observation.valueCodeableConcept) {
       for (const coding of observation.valueCodeableConcept.coding) {
         this._addCode(coding);
+      }
+    }
+    // If the observation has an integer value, it could be an Ecog or
+    // Karnofsky score
+    if (typeof observation.valueInteger === 'number') {
+      if (observation.code.coding) {
+        for (const coding of observation.code.coding) {
+          if (coding.system === LOINC_SYSTEM) {
+            if (coding.code === '89247-1') {
+              // Ecog
+              this._criterions.ecog = observation.valueInteger;
+            } else if (coding.code === '89243-0') {
+              // Karnosky
+              this._criterions.karnofsky = observation.valueInteger;
+            }
+          }
+        }
       }
     }
     // Check if this is a tumor stage observation

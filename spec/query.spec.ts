@@ -327,6 +327,112 @@ describe("APIQuery", () => {
     expect(query._criterions.karnofsky).toEqual(80);
   });
 
+  it("parses positive biomarkers", () => {
+    const query = new AncoraAPIQuery({
+      resourceType: "Bundle",
+      type: "collection",
+      entry: [
+        {
+          "resource": {
+            "resourceType": "Observation",
+            "status": "final",
+            "subject": {
+              "reference": "urn:uuid:Ob4VwDGaXWUMXbJOr7nMN",
+              "type": "Patient"
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "code": "10828004",
+                  "display": "Positive (qualifier value)",
+                  "system": "http://snomed.info/sct"
+                }
+              ]
+            },
+            "meta": {
+              "profile": [
+                "http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tumor-marker"
+              ]
+            },
+            "code": {
+              "coding": [
+                {
+                  "code": "50995-0",
+                  "display": "BRCA1+BRCA2 gene targeted mutation analysis in Blood or Tissue by Molecular genetics method",
+                  "system": "http://loinc.org"
+                }
+              ]
+            },
+            "category": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                    "code": "laboratory"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    });
+    expect(query._criterions.brca1).toBe(true);
+  });
+
+  it("parses negative biomarkers", () => {
+    const query = new AncoraAPIQuery({
+      resourceType: "Bundle",
+      type: "collection",
+      entry: [
+        {
+          "resource": {
+            "resourceType": "Observation",
+            "status": "final",
+            "subject": {
+              "reference": "urn:uuid:ASSEV4F261lmdRuaAB12n",
+              "type": "Patient"
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "code": "260385009",
+                  "display": "Negative (qualifier value)",
+                  "system": "http://snomed.info/sct"
+                }
+              ]
+            },
+            "meta": {
+              "profile": [
+                "http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-tumor-marker"
+              ]
+            },
+            "code": {
+              "coding": [
+                {
+                  "code": "51981-9",
+                  "display": "HER2 [Presence] in Serum by Immunoassay",
+                  "system": "http://loinc.org"
+                }
+              ]
+            },
+            "category": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                    "code": "laboratory"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    });
+    expect(query._criterions.her2).toBe(false);
+  });
+
   it("ignores unknown parameters", () => {
     // Passing in this case is simply "not raising an exception"
     new AncoraAPIQuery({

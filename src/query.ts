@@ -13,7 +13,7 @@ import {
 } from "clinical-trial-matching-service";
 import { Bundle, Condition, MedicationStatement, Observation } from 'fhir/r4';
 import convertToResearchStudy from "./researchstudy-mapping";
-import { LOINC_SYSTEM } from './ancora-mapping-data';
+import { LOINC_SYSTEM, SNOMED_CT_SYSTEM } from './ancora-mapping-data';
 import { AncoraCriteria, AncoraQuery } from './ancora-query';
 import { findQueryFlagsForCode, findDiseaseTypeForCode, findTumorStage } from './ancora-mappings';
 
@@ -278,8 +278,10 @@ export class AncoraAPIQuery {
   /**
    * Looks up and adds a code to the query.
    * @param code the code to add
+   * @param value the value to set the flag to, defaults to true (can also be
+   *   false to indicate a negative result)
    */
-  _addCode(code: { system?: string, code?: string }): void {
+  _addCode(code: { system?: string, code?: string }, value = true): void {
     // Ignore invalid stuff sent to this
     if (typeof code !== 'object' || code === null || typeof code.system !== 'string' || typeof code.code !== 'string') {
       return;
@@ -287,7 +289,7 @@ export class AncoraAPIQuery {
     const flags = findQueryFlagsForCode(code.system, code.code);
     if (flags) {
       for (const flag of flags) {
-        this._criterions[flag] = true;
+        this._criterions[flag] = value;
       }
     }
   }
@@ -329,8 +331,26 @@ export class AncoraAPIQuery {
    */
   addObservation(observation: Observation): void {
     if (observation.valueCodeableConcept) {
+      // Check if we know what this is
       for (const coding of observation.valueCodeableConcept.coding) {
-        this._addCode(coding);
+        if (coding.system === SNOMED_CT_SYSTEM) {
+          let flag: boolean;
+          if (coding.code === '10828004') {
+            // Code for a positive result
+            flag = true;
+          } else if (coding.code === '260385009') {
+            // Code for a negative result
+            flag = false;
+          }
+          if (flag !== undefined) {
+            // If the flag has a known value, add all codes
+            if (observation.code.coding) {
+              for (const codeCoding of observation.code.coding) {
+                this._addCode(codeCoding, flag);
+              }
+            }
+          }
+        }
       }
     }
     // If the observation has an integer value, it could be an Ecog or

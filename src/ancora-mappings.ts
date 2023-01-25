@@ -60,7 +60,7 @@ export function findQueryFlagsForCode(system: string, code: string): AncoraCrite
   const mapping = codesToAncora.get(system);
   if (mapping) {
     const flag = mapping.get(code);
-    return Array.from(flag) ?? null;
+    return flag ? Array.from(flag) : null;
   } else {
     return null;
   }

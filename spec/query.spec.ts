@@ -433,6 +433,41 @@ describe("APIQuery", () => {
     expect(query._criterions.her2).toBe(false);
   });
 
+  it("parses procedures", () => {
+    const query = new AncoraAPIQuery({
+      resourceType: "Bundle",
+      type: "collection",
+      entry: [
+        {
+          "resource": {
+            "resourceType": "Procedure",
+            "status": "completed",
+            "subject": {
+              "reference": "urn:uuid:ASSEV4F261lmdRuaAB12n",
+              "type": "Patient"
+            },
+            "code": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "429929004",
+                  "display": "Laser ablation using computed tomography guidance (procedure)"
+                }
+              ]
+            },
+            "meta": {
+              "profile": [
+                "http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-cancer-related-radiation-procedure"
+              ]
+            },
+            "performedDateTime": "2023-01-25T19:49:53.034Z"
+          }
+        }
+      ]
+    });
+    expect(query._criterions.radiation_therapy).toBe(true);
+  });
+
   it("ignores unknown parameters", () => {
     // Passing in this case is simply "not raising an exception"
     new AncoraAPIQuery({
@@ -476,6 +511,7 @@ describe("APIQuery", () => {
     expect(query._criterions.ecog).toEqual(3);
     expect(query._criterions.karnofsky).toEqual(60);
     expect(query._criterions.tumor_stage).toEqual(3);
+    expect(query._criterions.natal_sex).toEqual('female');
   });
 });
 

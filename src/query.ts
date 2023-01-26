@@ -11,7 +11,7 @@ import {
   ResearchStudy,
   SearchSet,
 } from "clinical-trial-matching-service";
-import { Bundle, Condition, MedicationStatement, Observation } from 'fhir/r4';
+import { Bundle, Condition, MedicationStatement, Observation, Patient, Procedure } from 'fhir/r4';
 import convertToResearchStudy from "./researchstudy-mapping";
 import { LOINC_SYSTEM, SNOMED_CT_SYSTEM } from './ancora-mapping-data';
 import { AncoraCriteria, AncoraQuery } from './ancora-query';
@@ -271,6 +271,10 @@ export class AncoraAPIQuery {
         this.addObservation(resource);
       } else if (resource.resourceType === "MedicationStatement") {
         this.addMedicationStatement(resource);
+      } else if (resource.resourceType === "Procedure") {
+        this.addProcedure(resource);
+      } else if (resource.resourceType === "Patient") {
+        this.addPatient(resource);
       }
     }
   }
@@ -386,6 +390,27 @@ export class AncoraAPIQuery {
     // Turns out this uses the same properties as Condition
     for (const coding of medicationStatement.medicationCodeableConcept.coding) {
       this._addCode(coding);
+    }
+  }
+
+  addProcedure(procedure: Procedure): void {
+    // For now, require procedures to be completed
+    if (procedure.status === 'completed') {
+      // For now, just add whatever codes we can
+      if (procedure.code && Array.isArray(procedure.code.coding)) {
+        for (const coding of procedure.code.coding) {
+          this._addCode(coding);
+        }
+      }
+    }
+  }
+
+  addPatient(patient: Patient): void {
+    // The only thing plucked out of this at present is gender
+    // This is probably, strictly speaking, inaccurate
+    const gender = patient.gender;
+    if (gender === 'male' || gender === 'female') {
+      this._criterions.natal_sex = gender;
     }
   }
 

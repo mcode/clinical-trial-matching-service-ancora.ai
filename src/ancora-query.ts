@@ -25,7 +25,7 @@
     "melanoma" | "colorectal_cancer" | "kidney_cancer" | "prostate_cancer" |
     "liver_cancer" | "pancreatic_cancer" | "cholangiocarcinoma" |
     "esophageal_cancer" | "gastric_cancer" | "acute_myeloid_leukemia" |
-    "myeloma";
+    "multiple_myeloma";
 
   location?: {
     lat: number,

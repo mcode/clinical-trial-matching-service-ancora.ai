@@ -22,7 +22,10 @@ export interface AncoraAiConfiguration extends ServiceConfiguration {
   api_key?: string;
 }
 
+// Debug log - logs lots of debug information
 let debuglog: util.DebugLoggerFunction = util.debuglog('ancora', (logger) => { debuglog = logger; });
+// Query logger - logs JUST the queries sent to Ancora
+let querylog: util.DebugLoggerFunction = util.debuglog('ancora_query', (logger) => { querylog = logger; });
 
 /**
  * Create a new matching function using the given configuration.
@@ -512,6 +515,7 @@ function sendQuery(
   return new Promise((resolve, reject) => {
     const queryJsonObject = query.toQuery();
     debuglog('Running query: %o', queryJsonObject);
+    querylog('Generated query: %j', queryJsonObject);
     request({
       method: 'POST',
       uri: endpoint,

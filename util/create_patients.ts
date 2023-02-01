@@ -19,7 +19,7 @@ import {
   LOINC_SYSTEM,
   RX_NORM_SYSTEM,
   SNOMED_CT_SYSTEM
-} from './ancora-mapping-data';
+} from '../src/ancora-mapping-data';
 
 
 // Test file to generate CSV information for patients

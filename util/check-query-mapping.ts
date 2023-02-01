@@ -1,7 +1,7 @@
 // Utility script to check what flags in the criteria have codes mapped to them
 
-import { AncoraCriterionFlag } from "./ancora-query";
-import { ancoraCriterionCodes } from "./ancora-mapping-data";
+import { AncoraCriterionFlag } from "../src/ancora-query";
+import { ancoraCriterionCodes } from "../src/ancora-mapping-data";
 
 // This type is to ensure nothing got missed
 type MappedCriteria = Record<AncoraCriterionFlag, number>;

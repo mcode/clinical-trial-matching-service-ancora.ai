@@ -7,7 +7,7 @@
 //
 import fs from 'fs';
 
-import { AncoraResponse, isAncoraResponse, isAncoraTrial, isAncoraTrialLocation } from './query';
+import { AncoraResponse, isAncoraResponse, isAncoraTrial, isAncoraTrialLocation } from '../src/query';
 
 function scanFile(filename: string): void {
   const text = fs.readFileSync(filename, { encoding: 'utf-8' });

@@ -76,12 +76,12 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
   // Do things need to be escaped?
   result.description = trial.trial_summary;
   const status = recruitingStatusMapping.get(trial.recruiting_status);
-  if (status !== null) {
+  if (status !== undefined) {
     result.status = status;
   }
   // Phase is optional, only add it if recognized
   const phase = phaseMapping.get(trial.trial_phase);
-  if (phase !== null) {
+  if (phase !== undefined) {
     result.phase = {
       coding: [
         {
@@ -93,8 +93,11 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
       text: trial.trial_phase
     }
   }
-  // The ResearchStudy type is currently missing primary purpose
-  (result as FhirResearchStudy).primaryPurposeType = parsePrimaryPurpose(trial.primary_purpose);
+  const primaryPurpose = parsePrimaryPurpose(trial.primary_purpose);
+  if (primaryPurpose !== undefined) {
+    // The ResearchStudy type is currently missing primary purpose
+    (result as FhirResearchStudy).primaryPurposeType = primaryPurpose;
+  }
   const eligibilityGroup = result.addContainedResource({
     resourceType: 'Group',
     type: 'person',
@@ -120,7 +123,7 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
   result.arm = trial.arms.map<ResearchStudyArm>(arm => {
     return {
       name: arm["arm name"],
-      description: arm["arm name"],
+      description: arm["arm description"],
       type: {
         // TODO: Can this be mapped to a proper code?
         text: arm["arm type"]

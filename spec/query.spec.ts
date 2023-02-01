@@ -1,8 +1,3 @@
-/**
- * This provides an example of how to test the query to ensure it produces
- * results.
- */
-
 import {
   ClinicalTrialsGovService,
   ResearchStudy,

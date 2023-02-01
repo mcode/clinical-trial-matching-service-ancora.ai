@@ -10,7 +10,8 @@ import {
   ancoraDiseaseCodes,
   ancoraStageMappings,
   AncoraQueryDisease,
-  FhirSystem
+  FhirSystem,
+  CANCERSTAGING_SYSTEM
 } from './ancora-mapping-data';
 
 // TODO: Don't know how to code the following:
@@ -84,6 +85,8 @@ for (const [disease, mappings] of ancoraDiseaseCodes) {
     for (const code of codes) {
       // Check for accidental duplicates
       const existing = findDiseaseTypeForCode(system, code);
+      // This is a sanity check and the if never happening is expected
+      /* istanbul ignore if */
       if (existing) {
         console.error(`Warning: trying to map ${code} to ${disease} when it is already mapped to ${existing}, keeping original mapping to ${existing}!`);
       } else {
@@ -111,12 +114,29 @@ function tumorStageMappingsFor(system: string): Map<string, number> {
   return mappings;
 }
 
+/**
+ * Normalize the code for matching
+ * @param code the code to normalize
+ * @returns the lower-cased code
+ */
+function normalizeCode(system: string, code: string): string {
+  // For now, this assumes cancer staging codes should be normalized to
+  // lower case. FIXME: Is this in fact correct?
+  if (system === CANCERSTAGING_SYSTEM)
+    return code.toLowerCase();
+  else
+    return code;
+}
+
 for (const [tumorStage, mappings] of ancoraStageMappings) {
   for (const [system, codes] of mappings) {
     // First, grab the stage mappings
     const stageMappings = tumorStageMappingsFor(system);
-    for (const code of codes) {
+    for (let code of codes) {
+      code = normalizeCode(system, code);
       const existing = tumorStageForCode(system, code);
+      // This is a sanity check and the if never happening is expected
+      /* istanbul ignore if */
       if (existing) {
         console.error(`Warning: trying to map ${code} to stage ${tumorStage} when it is already mapped to ${existing}, keeping original mapping to ${existing}!`);
       } else {
@@ -131,7 +151,7 @@ export function tumorStageForCode(system: string | undefined, code: string | und
   if (typeof system === 'undefined' || typeof code === 'undefined') {
     return undefined;
   }
-  return codesToTumorStages.get(system)?.get(code);
+  return codesToTumorStages.get(system)?.get(normalizeCode(system, code));
 }
 
 const STAGE_LOINC_CODES = new Set<string>(['21908-9', '21902-2', '21914-7']);

@@ -7,11 +7,16 @@ export const LOINC_SYSTEM = 'http://loinc.org';
 export const RX_NORM_SYSTEM = 'http://www.nlm.nih.gov/research/umls/rxnorm';
 export const SNOMED_CT_SYSTEM = 'http://snomed.info/sct';
 export const ICD_10_SYSTEM = 'http://hl7.org/fhir/sid/icd-10';
+export const CANCERSTAGING_SYSTEM = 'http://cancerstaging.org';
 
 // Because the systems are all constant string values, typeof works to "extract"
 // the string value to a TypeScript type. This type is mainly used for "typo
 // checking" in the mappings coded below.
-export type FhirSystem = typeof LOINC_SYSTEM | typeof RX_NORM_SYSTEM | typeof SNOMED_CT_SYSTEM | typeof ICD_10_SYSTEM;
+export type FhirSystem = typeof LOINC_SYSTEM
+    | typeof RX_NORM_SYSTEM
+    | typeof SNOMED_CT_SYSTEM
+    | typeof ICD_10_SYSTEM
+    | typeof CANCERSTAGING_SYSTEM;
 export type CodeMappings = Map<FhirSystem, string[]>;
 
 /**
@@ -990,7 +995,8 @@ export const ancoraStageMappings = new Map<number, Map<FhirSystem, string[]>>([
         [
           '261613009', '261644000', '261645004'
         ]
-      ]
+      ],
+      [ CANCERSTAGING_SYSTEM, ['0'] ]
     ]),
   ],
   [
@@ -1002,7 +1008,8 @@ export const ancoraStageMappings = new Map<number, Map<FhirSystem, string[]>>([
           '258215001', '261632003', '261633008', '261634002', '261635001',
           '261636000', '261641008', '313112008', '313114009', '313143001'
         ]
-      ]
+      ],
+      [ CANCERSTAGING_SYSTEM, ['1', '1A'] ]
     ]),
   ],
   [
@@ -1013,7 +1020,8 @@ export const ancoraStageMappings = new Map<number, Map<FhirSystem, string[]>>([
         [
           '258219007', '261614003', '261615002', '261637009'
         ]
-      ]
+      ],
+      [ CANCERSTAGING_SYSTEM, ['2','2A','2B'] ]
     ])
   ],
   [
@@ -1024,7 +1032,8 @@ export const ancoraStageMappings = new Map<number, Map<FhirSystem, string[]>>([
         [
           '258224005', '261638004', '261639007', '261640009'
         ]
-      ]
+      ],
+      [ CANCERSTAGING_SYSTEM, ['3','3A','3B','3C'] ]
     ])
   ],
   [
@@ -1035,7 +1044,8 @@ export const ancoraStageMappings = new Map<number, Map<FhirSystem, string[]>>([
         [
           '258228008', '261616001', '261642001', '261643006', '313046007'
         ]
-      ]
+      ],
+      [ CANCERSTAGING_SYSTEM, ['4','4A','4B','4C','4D','4E','4S'] ]
     ])
   ],
 ]);

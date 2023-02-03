@@ -3,7 +3,7 @@ import {
   ResearchStudy,
   SearchSet,
 } from "clinical-trial-matching-service";
-import { Bundle, BundleEntry, FhirResource } from 'fhir/r4';
+import { Bundle, BundleEntry, FhirResource, Patient } from 'fhir/r4';
 import createAncoraAiLookup, {
   convertResponseToSearchSet,
   isAncoraTrial,
@@ -373,6 +373,78 @@ describe("APIQuery", () => {
       ]
     });
     expect(query._criterions.brca1).toBe(true);
+  });
+
+  describe("parses ages", () => {
+    let bundle: Bundle;
+    let patient: Patient;
+    beforeEach(() => {
+      patient = {
+        resourceType: 'Patient',
+      };
+      bundle = {
+        resourceType: 'Bundle',
+        type: 'collection',
+        entry: [
+          {
+            resource: patient
+          }
+        ]
+      };
+      jasmine.clock().install();
+    });
+    afterEach(() => {
+      jasmine.clock().uninstall();
+    });
+    it('handles birth dates before today', () => {
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 1, 3, 0, 0, 0)));
+      patient.birthDate = '2002-02-01';
+      expect(new AncoraAPIQuery(bundle)._criterions.age).toEqual(21);
+    });
+    it('handles birth dates after today', () => {
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 1, 3, 0, 0, 0)));
+      patient.birthDate = '2002-02-04';
+      expect(new AncoraAPIQuery(bundle)._criterions.age).toEqual(20);
+    });
+    it('handles birth dates on exactly today', () => {
+      patient.birthDate = '2002-02-03';
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 1, 3, 0, 0, 0)));
+      expect(new AncoraAPIQuery(bundle)._criterions.age).toEqual(21);
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 1, 2, 23, 59, 59, 999)));
+      expect(new AncoraAPIQuery(bundle)._criterions.age).toEqual(20);
+    });
+    it('handles ages that would be 0', () => {
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 1, 3, 0, 0, 0)));
+      patient.birthDate = '2023-01-01';
+      expect(new AncoraAPIQuery(bundle)._criterions.age).toEqual(1);
+    });
+    it('handles ages that would be more than 100', () => {
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 1, 3, 0, 0, 0)));
+      patient.birthDate = '1918-01-01';
+      expect(new AncoraAPIQuery(bundle)._criterions.age).toEqual(100);
+    });
+    it('handles birth dates given as just a year', () => {
+      patient.birthDate = '2002';
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 1, 3, 0, 0, 0)));
+      expect(new AncoraAPIQuery(bundle)._criterions.age).toEqual(21);
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 0, 1, 0, 0, 0)));
+      expect(new AncoraAPIQuery(bundle)._criterions.age).toEqual(21);
+      jasmine.clock().mockDate(new Date(Date.UTC(2022, 11, 31, 23, 59, 59, 999)));
+      expect(new AncoraAPIQuery(bundle)._criterions.age).toEqual(20);
+    });
+    it('handles birth dates given as just a year and a month', () => {
+      patient.birthDate = '2002-06';
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 5, 1, 0, 0, 0)));
+      expect(new AncoraAPIQuery(bundle)._criterions.age).toEqual(21);
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 4, 31, 23, 59, 59, 999)));
+      expect(new AncoraAPIQuery(bundle)._criterions.age).toEqual(20);
+    });
+    it('ignores an invalid birthdate', () => {
+      patient.birthDate = 'invalid';
+      // Mock the date anyway
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 1, 3, 0, 0, 0)));
+      expect('age' in (new AncoraAPIQuery(bundle)._criterions)).toBeFalse();
+    })
   });
 
   it("parses negative biomarkers", () => {

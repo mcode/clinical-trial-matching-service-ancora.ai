@@ -409,8 +409,32 @@ export class AncoraAPIQuery {
   }
 
   addPatient(patient: Patient): void {
-    // The only thing plucked out of this at present is gender
-    // This is probably, strictly speaking, inaccurate
+    if (patient.birthDate) {
+      // For now, just parse out the date part
+      const birthDateParts = /^(\d+)(?:-(\d+)(?:-(\d+))?)?/.exec(patient.birthDate);
+      if (birthDateParts) {
+        // To avoid time zone shenanigans as much as possible (mainly, any DST
+        // weirdness), parse as a UTC date
+        const birthDate = new Date(
+          Date.UTC(
+            Number(birthDateParts[1]),
+            birthDateParts[2] === undefined ? 0 : (Number(birthDateParts[2]) - 1),
+            birthDateParts[3] === undefined ? 1 : Number(birthDateParts[3])
+          )
+        );
+        const today = new Date();
+        // Calculate age
+        let age = today.getUTCFullYear() - birthDate.getUTCFullYear();
+        if (today.getUTCMonth() < birthDate.getUTCMonth()
+          || today.getUTCMonth() == birthDate.getUTCMonth() && today.getUTCDate() < birthDate.getUTCDate()) {
+          // In this case, the age is off by one, as it's before the birthdate in the current year
+          age -= 1;
+        }
+        // Clamp age to 1-100
+        this._criterions.age = Math.max(1, Math.min(100, age));
+      }
+    }
+    // Using the gender field is probably, strictly speaking, inaccurate
     const gender = patient.gender;
     if (gender === 'male' || gender === 'female') {
       this._criterions.natal_sex = gender;

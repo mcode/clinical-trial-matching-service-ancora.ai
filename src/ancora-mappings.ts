@@ -167,7 +167,7 @@ export function findTumorStage(observation: Observation): number | null {
   // First check: MCode limits the tumor stages to the LOINC codes
   // 21908-9, 21902-2, or 21914-7.
   const coding = observation.code?.coding;
-  if (!coding) {
+  if (!Array.isArray(coding)) {
     return null;
   }
   if (coding.findIndex((value) => { return STAGE_LOINC_CODES.has(value.code); }) < 0) {
@@ -175,7 +175,7 @@ export function findTumorStage(observation: Observation): number | null {
     return null;
   }
   const stagingCodes = observation.valueCodeableConcept?.coding;
-  if (stagingCodes) {
+  if (Array.isArray(stagingCodes)) {
     // See if we recognize any of the codes
     for (const code of stagingCodes) {
       const tumorStage = tumorStageForCode(code.system, code.code);

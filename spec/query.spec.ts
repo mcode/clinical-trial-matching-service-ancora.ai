@@ -100,6 +100,14 @@ describe("isAncoraTrial()", () => {
     expect(isAncoraTrial("string")).toBeFalse();
     expect(isAncoraTrial(42)).toBeFalse();
     expect(isAncoraTrial({ invalid: true })).toBeFalse();
+    // Clone the example trial and make the locations invalid
+    const clonedExample = JSON.parse(JSON.stringify(exampleTrial)) as Record<string, unknown>;
+    // Make sure the cloning process didn't break anything
+    expect(isAncoraTrial(clonedExample)).toBeTrue();
+    clonedExample.locations = { 'invalid': [ 1 ] };
+    expect(isAncoraTrial(clonedExample)).toBeFalse();
+    clonedExample.locations = 'invalid';
+    expect(isAncoraTrial(clonedExample)).toBeFalse();
   });
 
   it("returns true on a matching object", () => {
@@ -296,6 +304,53 @@ describe("APIQuery", () => {
     expect(query._criterions.ecog).toEqual(2);
   });
 
+  it('parses histology morphology values', () => {
+    const query = new AncoraAPIQuery({
+      resourceType: "Bundle",
+      type: "collection",
+      entry: [
+        {
+          fullUrl: "urn:uuid:conditionId-1",
+          resource: {
+            "resourceType": "Condition",
+            "id": "conditionId-1",
+            "meta": {
+              "profile": [
+                "http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-primary-cancer-condition"
+              ]
+            },
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-histology-morphology-behavior",
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "http://snomed.info/sct",
+                      "code": "254626006"
+                    }
+                  ]
+                }
+              }
+            ],
+            "code": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "25050002"
+                }
+              ]
+            },
+            "subject": {
+              "reference": "urn:uuid:TestPatient",
+              "type": "Patient"
+            }
+          }
+        }
+      ]
+    });
+    expect(query._criterions.lung_adenocarcinoma).toBe(true);
+  });
+
   it("parses Karnofsky scores", () => {
     const query = new AncoraAPIQuery({
       resourceType: "Bundle",
@@ -444,7 +499,13 @@ describe("APIQuery", () => {
       // Mock the date anyway
       jasmine.clock().mockDate(new Date(Date.UTC(2023, 1, 3, 0, 0, 0)));
       expect('age' in (new AncoraAPIQuery(bundle)._criterions)).toBeFalse();
-    })
+    });
+    it('ignores a missing birthdate', () => {
+      delete patient.birthDate;
+      // Mock the date anyway
+      jasmine.clock().mockDate(new Date(Date.UTC(2023, 1, 3, 0, 0, 0)));
+      expect('age' in (new AncoraAPIQuery(bundle)._criterions)).toBeFalse();
+    });
   });
 
   it("parses negative biomarkers", () => {
@@ -567,6 +628,265 @@ describe("APIQuery", () => {
     bundle.entry?.push(({ invalid: true } as unknown) as BundleEntry);
     new AncoraAPIQuery(bundle);
     // Passing is not raising an exception
+  });
+
+  it('handles bad data', () => {
+    const query = new AncoraAPIQuery({
+      resourceType: "Bundle",
+      type: "collection",
+      entry: [
+        {
+          "resource": {
+            "resourceType": "Procedure",
+            "status": "completed",
+            "subject": {
+              "reference": "urn:uuid:ASSEV4F261lmdRuaAB12n",
+              "type": "Patient"
+            },
+            "code": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  // Invalid type for a code
+                  "code": 12
+                }
+              ]
+            }
+          }
+        },
+        // An entered-in-error procedure that should be ignored
+        {
+          "resource": {
+            "resourceType": "Procedure",
+            "status": "entered-in-error",
+            "subject": {
+              "reference": "urn:uuid:ASSEV4F261lmdRuaAB12n",
+              "type": "Patient"
+            },
+            "code": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "10611004"
+                }
+              ]
+            }
+          }
+        },
+        // A procedure with an invalid coding object
+        {
+          "resource": {
+            "resourceType": "Procedure",
+            "status": "completed",
+            "subject": {
+              "reference": "urn:uuid:ASSEV4F261lmdRuaAB12n",
+              "type": "Patient"
+            },
+            "code": {
+              "coding": 12
+            }
+          }
+        },
+        // A resource that should be ignored as it isn't understood
+        {
+          resource: {
+            resourceType: 'Account',
+            status: 'active'
+          }
+        },
+        // An observation that is missing a code
+        {
+          resource: {
+            resourceType: 'Observation',
+            valueInteger: 1,
+          }
+        },
+        // An observation with invalid coding
+        {
+          resource: {
+            resourceType: 'Observation',
+            valueInteger: 1,
+            code: {
+              coding: false
+            }
+          }
+        },
+        // An observation with coding in an unknown system
+        {
+          resource: {
+            resourceType: 'Observation',
+            valueInteger: 1,
+            code: {
+              coding: [
+                {
+                  system: 'http://www.example.com/unknown',
+                  code: 'unknown'
+                }
+              ]
+            }
+          }
+        },
+        // An observation with a LOINC code that should be ignored
+        {
+          resource: {
+            resourceType: 'Observation',
+            valueInteger: 1,
+            code: {
+              coding: [
+                {
+                  system: 'http://loinc.org',
+                  code: 'unknown'
+                }
+              ]
+            }
+          }
+        },
+        // An observation that doesn't specify a known positive/negative result
+        {
+          resource: {
+            resourceType: 'Observation',
+            code: {
+              coding: [ { system: 'http://loinc.org', code: '16112-5' } ]
+            },
+            valueCodeableConcept: {
+              coding: [ { system: 'http://www.example.com/invalid', code: 'invalid' } ]
+            }
+          }
+        },
+        // An observation with an invalid code
+        {
+          resource: {
+            resourceType: 'Observation',
+            code: {
+              coding: [ { } ]
+            },
+            valueCodeableConcept: {
+              coding: [ { system: 'http://snomed.info/sct', code: '10828004' } ]
+            }
+          }
+        },
+        // An observation with an invalid code
+        {
+          resource: {
+            resourceType: 'Observation',
+            code: {
+              coding: [ true ]
+            },
+            valueCodeableConcept: {
+              coding: [ { system: 'http://snomed.info/sct', code: '10828004' } ]
+            }
+          }
+        },
+        // An observation with an invalid code
+        {
+          resource: {
+            resourceType: 'Observation',
+            code: {
+              coding: true
+            },
+            valueCodeableConcept: {
+              coding: [ { system: 'http://snomed.info/sct', code: '10828004' } ]
+            }
+          }
+        },
+        // An observation with an invalid code
+        {
+          resource: {
+            resourceType: 'Observation',
+            code: true,
+            valueCodeableConcept: {
+              coding: [ { system: 'http://snomed.info/sct', code: '10828004' } ]
+            }
+          }
+        },
+        // An observation with no code
+        {
+          resource: {
+            resourceType: 'Observation',
+            valueCodeableConcept: {
+              coding: [ { system: 'http://snomed.info/sct', code: '10828004' } ]
+            }
+          }
+        },
+        // A condition with an invalid extension
+        {
+          resource: {
+            resourceType: 'Condition',
+            extension: [
+              {
+                url: 'http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-histology-morphology-behavior',
+                valueCodeableConcept: {
+                  coding: [ true ]
+                }
+              }
+            ],
+            subject: { reference: "urn:uuid:patient", type: "Patient" }
+          }
+        },
+        // A condition with an invalid extension
+        {
+          resource: {
+            resourceType: 'Condition',
+            extension: [
+              {
+                url: 'http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-histology-morphology-behavior',
+                valueCodeableConcept: {
+                  coding: true
+                }
+              }
+            ],
+            subject: { reference: "urn:uuid:patient", type: "Patient" }
+          }
+        },
+        // A condition with an invalid extension
+        {
+          resource: {
+            resourceType: 'Condition',
+            extension: [
+              {
+                url: 'http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-histology-morphology-behavior',
+                valueCodeableConcept: true
+              }
+            ],
+            subject: { reference: "urn:uuid:patient", type: "Patient" }
+          }
+        },
+        // A condition with an invalid extension
+        {
+          resource: {
+            resourceType: 'Condition',
+            extension: [
+              {
+                url: 'http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-histology-morphology-behavior'
+              }
+            ],
+            subject: { reference: "urn:uuid:patient", type: "Patient" }
+          }
+        },
+        // A condition with an unknown extension
+        {
+          resource: {
+            resourceType: 'Condition',
+            extension: [
+              {
+                url: 'http://www.example.com/unknown',
+                valueCodeableConcept: {
+                  coding: [ { system: "http://snomed.info/sct", "code": "1187425009" } ]
+                }
+              }
+            ],
+            subject: { reference: "urn:uuid:patient", type: "Patient" }
+          }
+        }
+      ]
+      // Jam this object in even though it's invalid (as this is intended to
+      // test invalid values coming from external JSON)
+    } /*);/*/ as unknown as Bundle);
+    // This test passes by not doing anything
+    expect(query._criterions).toEqual({});
+    // Because nothing was found, an error should be raised if converted to a query
+    expect(() => query.toQuery()).toThrowError(Error, 'No supported type of disease found within patient data, cannot generate a valid query.');
+    expect(query.toString()).toEqual('[AncoraAPIQuery (invalid: no typeOfDisease, with criteria: {})]');
   });
 
   it('can handle a patient bundle from the front end', async () => {

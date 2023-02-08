@@ -141,9 +141,16 @@ export function isAncoraTrial(o: unknown): o is AncoraTrial {
   if (!(
     Array.isArray(trial.arms) &&
     Array.isArray(trial.treatments) &&
-    typeof trial.locations === 'object' && trial.locations != null
+    typeof trial.locations === 'object' && trial.locations !== null
   )) {
     return false;
+  }
+  // Check to make sure locations are valid
+  for (const locationId in trial.locations) {
+    const locations = trial.locations[locationId];
+    if (!(Array.isArray(locations) && locations.every(isAncoraTrialLocation))) {
+      return false;
+    }
   }
   // Finally check the types of the various fields
   return typeof trial.trial_id === 'string' &&
@@ -306,13 +313,15 @@ export class AncoraAPIQuery {
    * @param condition the condition to add
    */
   addCondition(condition: Condition): void {
-    for (const coding of condition.code.coding) {
-      this._addCode(coding);
-      // Also see if this is a known disease type
-      const diseaseType = findDiseaseTypeForCode(coding.system, coding.code);
-      if (diseaseType !== null) {
-        // For now, if multiple types match, just take the last one seen
-        this.typeOfDisease = diseaseType;
+    if (Array.isArray(condition.code?.coding)) {
+      for (const coding of condition.code.coding) {
+        this._addCode(coding);
+        // Also see if this is a known disease type
+        const diseaseType = findDiseaseTypeForCode(coding.system, coding.code);
+        if (diseaseType !== null) {
+          // For now, if multiple types match, just take the last one seen
+          this.typeOfDisease = diseaseType;
+        }
       }
     }
     // Also check to see if the condition has an extension with the histology set
@@ -351,7 +360,7 @@ export class AncoraAPIQuery {
           }
           if (flag !== undefined) {
             // If the flag has a known value, add all codes
-            if (observation.code.coding) {
+            if (Array.isArray(observation.code?.coding)) {
               for (const codeCoding of observation.code.coding) {
                 this._addCode(codeCoding, flag);
               }
@@ -363,7 +372,7 @@ export class AncoraAPIQuery {
     // If the observation has an integer value, it could be an Ecog or
     // Karnofsky score
     if (typeof observation.valueInteger === 'number') {
-      if (observation.code.coding) {
+      if (Array.isArray(observation.code?.coding)) {
         for (const coding of observation.code.coding) {
           if (coding.system === LOINC_SYSTEM) {
             if (coding.code === '89247-1') {

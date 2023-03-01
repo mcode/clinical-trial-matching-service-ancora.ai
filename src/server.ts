@@ -1,6 +1,6 @@
 // This stub handles starting the server.
 
-import createClinicalTrialLookup, { QueryConfiguration } from "./query";
+import createAncoraAiLookup, { AncoraAiConfiguration } from "./query";
 import ClinicalTrialMatchingService, {
   configFromEnv,
   createClinicalTrialsGovService,
@@ -23,7 +23,7 @@ import * as path from "path";
  *     dotenv-flow
  */
 export default async function startServer(
-  configuration?: QueryConfiguration
+  configuration?: AncoraAiConfiguration
 ): Promise<ClinicalTrialMatchingService> {
   // Use dotenv-flow to load local configuration from .env files
   dotenv.config({
@@ -34,7 +34,7 @@ export default async function startServer(
   });
 
   if (!configuration) {
-    configuration = configFromEnv("MATCHING_SERVICE_");
+    configuration = configFromEnv("ANCORA_AI_");
   }
 
   // Create a ClinicalTrialGovService. It takes a path to a temporary directory
@@ -42,7 +42,7 @@ export default async function startServer(
   const ctgService = await createClinicalTrialsGovService(
     path.resolve(__dirname, "../ctgov-cache")
   );
-  const getMatchingClinicalTrials = createClinicalTrialLookup(
+  const getMatchingClinicalTrials = createAncoraAiLookup(
     configuration,
     ctgService
   );

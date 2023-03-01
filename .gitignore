@@ -5,6 +5,7 @@
 # Ignore built files
 /dist
 /dist-spec
+/dist-util
 
 # Ignore installed modules
 /node_modules
@@ -12,6 +13,9 @@
 # Ignore test files
 /.nyc_output
 /coverage
+
+# Ignore ct-gov cache
+/ctgov-cache
 
 # System Files
 .DS_Store

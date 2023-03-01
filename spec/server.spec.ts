@@ -1,4 +1,5 @@
 import startServer from "../src/server";
+import * as http from 'http';
 import ClinicalTrialMatchingService from "clinical-trial-matching-service";
 
 describe("startServer()", () => {
@@ -8,7 +9,7 @@ describe("startServer()", () => {
     spyOn(ClinicalTrialMatchingService.prototype, "listen").and.callFake(() => {
       // Note: null return works here because the result of service is never
       // actually used in the "real" function
-      return null;
+      return Promise.resolve(null as unknown as http.Server);
     });
   });
 
@@ -21,7 +22,7 @@ describe("startServer()", () => {
     return expectAsync(
       startServer({
         endpoint: "https://www.example.com/endpoint",
-        auth_token: "fake",
+        api_key: "fake",
         host: "127.0.0.1",
         port: 0,
       }).then((service) => {

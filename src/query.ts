@@ -4,7 +4,17 @@
  */
 
 import util from 'node:util';
-import request from 'request';
+// TypeScript doesn't support loading ESM modules (still!) so this works around that
+import type { default as nodefetch, RequestInfo, RequestInit, Response } from 'node-fetch';
+const fetch: (url: URL | RequestInfo, options: RequestInit) => Promise<Response> = (() => {
+  let fetchmod: typeof nodefetch | undefined = undefined;
+  return async (url: URL | RequestInfo, options: RequestInit) => {
+    if (fetchmod === undefined) {
+      fetchmod = (await (eval('import("node-fetch")') as Promise<{default: typeof nodefetch}>)).default;
+    }
+    return await fetchmod(url, options);
+  };
+})();
 import {
   ClinicalTrialsGovService,
   ServiceConfiguration,
@@ -200,7 +210,7 @@ export function isQueryErrorResponse(o: unknown): o is QueryErrorResponse {
 export class APIError extends Error {
   constructor(
     message: string,
-    public response: request.Response,
+    public response: Response,
     public body: unknown
   ) {
     super(message);
@@ -539,60 +549,50 @@ export function convertResponseToSearchSet(
  *     update the returned trials with additional information pulled from
  *     ClinicalTrials.gov
  */
-function sendQuery(
+async function sendQuery(
   endpoint: string,
   query: AncoraAPIQuery,
   apiKey: string,
   ctgService?: ClinicalTrialsGovService
 ): Promise<SearchSet> {
-  return new Promise((resolve, reject) => {
-    const queryJsonObject = query.toQuery();
-    debuglog('Running query: %o', queryJsonObject);
-    querylog('Generated query: %j', queryJsonObject);
-    request({
-      method: 'POST',
-      uri: endpoint,
-      gzip: true,
-      json: true,
-      body: queryJsonObject,
-      headers: {
-        "X-Api-Key": apiKey
-      }
+  const queryJsonObject = query.toQuery();
+  debuglog('Running query: %o', queryJsonObject);
+  querylog('Generated query: %j', queryJsonObject);
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(queryJsonObject),
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Api-Key': apiKey,
     },
-    (error, response, result: unknown) => {
-      if (error) {
-        debuglog('ERROR while sending requeset: %o', error);
-        // An error occurred
-        reject(error);
-        return;
-      }
-      debuglog('Received response: %d %s', response.statusCode, response.statusMessage);
-      debuglog('Headers: %o', response.headers);
-      if (response.statusCode === 200) {
-        debuglog('Response object: %j', result);
-        // Response object should be an array
-        if (Array.isArray(result)) {
-          resolve(convertResponseToSearchSet(result, ctgService));
-        } else if (isQueryErrorResponse(result)) {
-          reject(
-            new APIError(
-              `Error from service: ${result.error}`,
-              response,
-              result
-            )
-          );
-        } else {
-          reject(new Error("Unable to parse response from server"));
-        }
-      } else {
-        reject(
-          new APIError(
-            `Server returned ${response.statusCode} ${response.statusMessage}`,
-            response,
-            result
-          )
+  });
+  debuglog('Received response: %d %s', response.status, response.statusText);
+  debuglog('Headers: %o', response.headers);
+  if (response.status === 200) {
+    let result: unknown;
+    try {
+      result = await response.json();
+    } catch (ex) {
+      throw new Error('Unable to parse response from server: invalid JSON');
+    }
+    debuglog('Response object: %j', result);
+    // Response object should be an array
+    if (Array.isArray(result)) {
+      return convertResponseToSearchSet(result, ctgService);
+    } else if (isQueryErrorResponse(result)) {
+      throw new APIError(
+          `Error from service: ${result.error}`,
+          response,
+          result
         );
-      }
-    }); // request
-  }); // Promise
+    } else {
+      throw new Error("Unable to parse response from server: invalid JSON object");
+    }
+  } else {
+    throw new APIError(
+      `Server returned ${response.status} ${response.statusText}`,
+      response,
+      await response.text()
+    );
+  }
 }

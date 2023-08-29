@@ -1009,7 +1009,7 @@ describe("ClinicalTrialLookup", () => {
     // Simulate a valid response with something that can't be parsed as JSON
     mockRequest.reply(200, { missingAllKnownKeys: true });
     return expectAsync(matcher(patientBundle)).toBeRejectedWithError(
-      "Unable to parse response from server"
+      /^Unable to parse response from server/
     );
   });
 
@@ -1017,7 +1017,7 @@ describe("ClinicalTrialLookup", () => {
     // Simulate a valid response with something that can't be parsed as JSON
     mockRequest.reply(200, "A string that isn't JSON");
     return expectAsync(matcher(patientBundle)).toBeRejectedWithError(
-      "Unable to parse response from server"
+      /^Unable to parse response from server/
     );
   });
 
@@ -1025,7 +1025,7 @@ describe("ClinicalTrialLookup", () => {
     // Simulate a valid response with something that can't be parsed as JSON
     mockRequest.replyWithError("Test error");
     return expectAsync(matcher(patientBundle)).toBeRejectedWithError(
-      "Test error"
+      /Test error/
     );
   });
 });

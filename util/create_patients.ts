@@ -17,8 +17,7 @@ import {
   ancoraCriterionCodes,
   ancoraDiseaseCodes,
   LOINC_SYSTEM,
-  RX_NORM_SYSTEM,
-  SNOMED_CT_SYSTEM
+  RX_NORM_SYSTEM
 } from '../src/ancora-mapping-data';
 
 
@@ -54,8 +53,9 @@ const writeCSVLine = (out: WriteStream, data: unknown[]): void => {
     if (value === null) {
       out.write('null');
     } else if (typeof value !== 'undefined') {
-      // Everything else is handled via toString()
-      const str = value.toString();
+      // Just convert string/numbers to strings. Anything else convert to JSON
+      // (which should never happen?)
+      const str = (typeof value === 'number' || typeof value === 'string') ? value.toString() : JSON.stringify(value);
       // If the string has commas in it, it needs to be escaped
       if (str.indexOf(',') >= 0) {
         out.write(`"${str.replace(/"/g, '""')}"`);

@@ -533,19 +533,16 @@ export function convertResponseToSearchSet(
       debuglog('Unable to parse trial from server: %o', trial);
     }
   }
-  return Promise.resolve(new SearchSet(entries));
   
-  // if (ctgService) {
-  //   // If given a backup service, use it
-  //   // console.log("Studies", studies.toString());
-  //   return ctgService.updateSearchSetEntries(entries).then(() => {
-  //     console.log("Updated", entries);
-  //     return new SearchSet(entries);
-  //   });
-  // } else {
-  //   // Otherwise, resolve immediately
-  //   return Promise.resolve(new SearchSet(entries));
-  // }
+  if (ctgService) {
+    // If given a backup service, use it
+    return ctgService.updateSearchSetEntries(entries).then(() => {
+      return new SearchSet(entries);
+    });
+  } else {
+    // Otherwise, resolve immediately
+    return Promise.resolve(new SearchSet(entries));
+  }
 }
 
 /**

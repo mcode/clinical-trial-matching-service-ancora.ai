@@ -3,7 +3,7 @@
  * the underlying service to the FHIR ResearchStudy type.
  */
 
-import { ResearchStudy, CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL } from 'clinical-trial-matching-service';
+import { ResearchStudy, SearchBundleEntry as SearchSetEntry, CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL } from 'clinical-trial-matching-service';
 import { CodeableConcept, ResearchStudyArm, ResearchStudy as FhirResearchStudy } from 'fhir/r4';
 import { AncoraTrial } from './query';
 
@@ -52,7 +52,23 @@ const phaseMapping = new Map<string, string>([
   ['Phase 4', 'phase-4']
 ]);
 
-export function convertToResearchStudy(trial: AncoraTrial, id: number): ResearchStudy {
+export function convertToSearchSetEntry(trial: AncoraTrial, id: number): SearchSetEntry {
+  // Convert the trial to a research study as normal
+  const study: ResearchStudy = convertToResearchStudy(trial, id);
+
+  const entry:SearchSetEntry = {
+    resource: study,
+    search: {
+      mode: "match",
+      score: trial['ancora_match_score'] || 0
+    }
+  }
+
+  console.log(entry);
+  return entry;
+}
+
+function convertToResearchStudy(trial: AncoraTrial, id: number): ResearchStudy {
   /*
    * Mapping TODO:
    * acronym: string; - don't have a good place to map this
@@ -145,4 +161,4 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
   return result;
 }
 
-export default convertToResearchStudy;
+export default convertToSearchSetEntry;

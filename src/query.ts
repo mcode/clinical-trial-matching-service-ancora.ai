@@ -20,9 +20,10 @@ import {
   ServiceConfiguration,
   ResearchStudy,
   SearchSet,
+  SearchBundleEntry,
 } from "clinical-trial-matching-service";
 import { Bundle, Condition, MedicationStatement, Observation, Patient, Procedure } from 'fhir/r4';
-import convertToResearchStudy from "./researchstudy-mapping";
+import convertToSearchSetEntry from "./researchstudy-mapping";
 import { LOINC_SYSTEM, SNOMED_CT_SYSTEM } from './ancora-mapping-data';
 import { AncoraCriteria, AncoraQuery } from './ancora-query';
 import { findQueryFlagsForCode, findDiseaseTypeForCode, findTumorStage } from './ancora-mappings';
@@ -138,6 +139,7 @@ export interface AncoraTrial extends Record<string, unknown> {
   locations: Record<string, AncoraTrialLocation[]>;
   sponsor: string;
   treatments: AncoraTrialTreatment[];
+  ancora_match_score: number;
 }
 
 /**
@@ -488,6 +490,8 @@ export class AncoraAPIQuery {
       query.radius = this._travelRadius;
       query.radius_unit = 'MI';
     }
+
+    console.log("query", JSON.stringify(query));
     return query;
   }
 
@@ -516,26 +520,28 @@ export function convertResponseToSearchSet(
   ctgService?: ClinicalTrialsGovService
 ): Promise<SearchSet> {
   // Our final response
-  const studies: ResearchStudy[] = [];
+  const entries:SearchBundleEntry[] = [];
   // For generating IDs
   let id = 0;
   for (const trial of response) {
     if (isAncoraTrial(trial)) {
-      studies.push(convertToResearchStudy(trial, id++));
+      const entry:SearchBundleEntry = convertToSearchSetEntry(trial, id++);
+      entries.push(entry);
     } else {
       // This trial could not be understood. It can be ignored if that should
       // happen or raised/logged as an error.
       debuglog('Unable to parse trial from server: %o', trial);
     }
   }
+  
   if (ctgService) {
     // If given a backup service, use it
-    return ctgService.updateResearchStudies(studies).then(() => {
-      return new SearchSet(studies);
+    return ctgService.updateSearchSetEntries(entries).then(() => {
+      return new SearchSet(entries);
     });
   } else {
     // Otherwise, resolve immediately
-    return Promise.resolve(new SearchSet(studies));
+    return Promise.resolve(new SearchSet(entries));
   }
 }
 

@@ -15,8 +15,14 @@
 /coverage
 
 # Ignore ct-gov cache
-/ctgov-cache
+/ctgov-cache.db
 
 # System Files
 .DS_Store
 Thumbs.db
+
+# Temporary ignores
+/results
+/results-old
+/Ancora Testing
+/data

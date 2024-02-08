@@ -925,7 +925,7 @@ describe("convertResponseToSearchSet()", () => {
     const backupService = new ClinicalTrialsGovService("temp");
     // Instead we install a spy that takes over "updating" the research studies
     // by doing nothing
-    const spy = spyOn(backupService, "updateResearchStudies").and.callFake(
+    const spy = spyOn(backupService, "updateSearchSetEntries").and.callFake(
       (studies) => {
         return Promise.resolve(studies);
       }

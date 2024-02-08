@@ -1,5 +1,5 @@
 import { AncoraTrial } from '../src/query';
-import convertToResearchStudy from '../src/researchstudy-mapping';
+import { convertToResearchStudy } from '../src/researchstudy-mapping';
 
 import fs from 'fs';
 import path from 'path';

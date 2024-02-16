@@ -3,8 +3,16 @@
  * the underlying service to the FHIR ResearchStudy type.
  */
 
-import { ResearchStudy, CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL } from 'clinical-trial-matching-service';
-import { CodeableConcept, ResearchStudyArm, ResearchStudy as FhirResearchStudy } from 'fhir/r4';
+import {
+  ResearchStudy,
+  SearchBundleEntry as SearchSetEntry,
+  CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL,
+} from 'clinical-trial-matching-service';
+import {
+  CodeableConcept,
+  ResearchStudyArm,
+  ResearchStudy as FhirResearchStudy,
+} from 'fhir/r4';
 import { AncoraTrial } from './query';
 
 function convertToFhirConstant(displayString: string) {
@@ -12,31 +20,39 @@ function convertToFhirConstant(displayString: string) {
 }
 
 const primaryPurposes = new Set<string>([
-  'treatment', 'prevention', 'diagnostic', 'supportive-care', 'screening',
-  'health-services-research', 'basic-science', 'device-feasibility'
+  'treatment',
+  'prevention',
+  'diagnostic',
+  'supportive-care',
+  'screening',
+  'health-services-research',
+  'basic-science',
+  'device-feasibility',
 ]);
 
 function parsePrimaryPurpose(display: string): CodeableConcept | undefined {
   const fhirValue = convertToFhirConstant(display);
-  return primaryPurposes.has(fhirValue) ? {
-    coding: [
-      {
-        code: fhirValue
+  return primaryPurposes.has(fhirValue)
+    ? {
+        coding: [
+          {
+            code: fhirValue,
+          },
+        ],
+        text: fhirValue,
       }
-    ],
-    text: fhirValue
-  } : undefined;
+    : undefined;
 }
 
 // Mapping between recruiting_status and the status in FHIR
-const recruitingStatusMapping = new Map<string, FhirResearchStudy["status"]>([
+const recruitingStatusMapping = new Map<string, FhirResearchStudy['status']>([
   // FIXME: What is the difference between Available and Recruiting? Does it matter?
   ['Available', 'active'],
   ['Recruiting', 'active'],
   // FIXME: Is 'approved' correct for this state?
   ['Not yet recruiting', 'approved'],
   // FIXME: Is 'temporarily-closed-to-accrual' correct for this?
-  ['Enrolling by invitation', 'temporarily-closed-to-accrual']
+  ['Enrolling by invitation', 'temporarily-closed-to-accrual'],
 ]);
 
 const phaseMapping = new Map<string, string>([
@@ -49,10 +65,32 @@ const phaseMapping = new Map<string, string>([
   ['Phase 2', 'phase-2'],
   ['Phase 2/Phase 3', 'phase-2-phase-3'],
   ['Phase 3', 'phase-3'],
-  ['Phase 4', 'phase-4']
+  ['Phase 4', 'phase-4'],
 ]);
 
-export function convertToResearchStudy(trial: AncoraTrial, id: number): ResearchStudy {
+export function convertToSearchSetEntry(
+  trial: AncoraTrial,
+  id: number
+): SearchSetEntry {
+  // Convert the trial to a research study as normal
+  const study: ResearchStudy = convertToResearchStudy(trial, id);
+
+  const entry: SearchSetEntry = {
+    resource: study,
+    search: {
+      mode: 'match',
+      score: trial['ancora_match_score'] || 0,
+    },
+  };
+
+  console.log(entry);
+  return entry;
+}
+
+export function convertToResearchStudy(
+  trial: AncoraTrial,
+  id: number
+): ResearchStudy {
   /*
    * Mapping TODO:
    * acronym: string; - don't have a good place to map this
@@ -68,8 +106,8 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
     {
       system: CLINICAL_TRIAL_IDENTIFIER_CODING_SYSTEM_URL,
       use: 'official',
-      value: trial.trial_id
-    }
+      value: trial.trial_id,
+    },
   ];
   result.title = trial.brief_title;
   // TODO: Technically description is Markdown.
@@ -87,11 +125,11 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
         {
           system: 'http://hl7.org/fhir/ValueSet/research-study-phase',
           code: phase,
-          display: trial.trial_phase
-        }
+          display: trial.trial_phase,
+        },
       ],
-      text: trial.trial_phase
-    }
+      text: trial.trial_phase,
+    };
   }
   const primaryPurpose = parsePrimaryPurpose(trial.primary_purpose);
   if (primaryPurpose !== undefined) {
@@ -101,10 +139,10 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
   const eligibilityGroup = result.addContainedResource({
     resourceType: 'Group',
     type: 'person',
-    actual: false
+    actual: false,
   });
   eligibilityGroup.display = trial.eligibility_criteria;
-  result.enrollment = [ eligibilityGroup ];
+  result.enrollment = [eligibilityGroup];
   result.principalInvestigator = result.addContainedResource({
     resourceType: 'Practitioner',
     name: [
@@ -112,22 +150,22 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
         use: 'usual',
         // The actual prinicpal_investigator value is just plain text, it might
         // be possible to parse out specific parts
-        text: trial.principal_investigator
-      }
-    ]
+        text: trial.principal_investigator,
+      },
+    ],
   });
   result.sponsor = result.addContainedResource({
     resourceType: 'Organization',
-    name: trial.sponsor
+    name: trial.sponsor,
   });
-  result.arm = trial.arms.map<ResearchStudyArm>(arm => {
+  result.arm = trial.arms.map<ResearchStudyArm>((arm) => {
     return {
-      name: arm["arm name"],
-      description: arm["arm description"],
+      name: arm['arm name'],
+      description: arm['arm description'],
       type: {
         // TODO: Can this be mapped to a proper code?
-        text: arm["arm type"]
-      }
+        text: arm['arm type'],
+      },
     };
   });
   // Add locations
@@ -138,11 +176,11 @@ export function convertToResearchStudy(trial: AncoraTrial, id: number): Research
       fhirLocation.address = {
         city: location.city,
         state: location.state,
-        postalCode: location.zip
+        postalCode: location.zip,
       };
     }
   }
   return result;
 }
 
-export default convertToResearchStudy;
+export default convertToSearchSetEntry;

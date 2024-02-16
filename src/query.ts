@@ -5,12 +5,24 @@
 
 import util from 'node:util';
 // TypeScript doesn't support loading ESM modules (still!) so this works around that
-import type { default as nodefetch, RequestInfo, RequestInit, Response } from 'node-fetch';
-const fetch: (url: URL | RequestInfo, options: RequestInit) => Promise<Response> = (() => {
+import type {
+  default as nodefetch,
+  RequestInfo,
+  RequestInit,
+  Response,
+} from 'node-fetch';
+const fetch: (
+  url: URL | RequestInfo,
+  options: RequestInit
+) => Promise<Response> = (() => {
   let fetchmod: typeof nodefetch | undefined = undefined;
   return async (url: URL | RequestInfo, options: RequestInit) => {
     if (fetchmod === undefined) {
-      fetchmod = (await (eval('import("node-fetch")') as Promise<{default: typeof nodefetch}>)).default;
+      fetchmod = (
+        await (eval('import("node-fetch")') as Promise<{
+          default: typeof nodefetch;
+        }>)
+      ).default;
     }
     return await fetchmod(url, options);
   };
@@ -18,14 +30,25 @@ const fetch: (url: URL | RequestInfo, options: RequestInit) => Promise<Response>
 import {
   ClinicalTrialsGovService,
   ServiceConfiguration,
-  ResearchStudy,
   SearchSet,
-} from "clinical-trial-matching-service";
-import { Bundle, Condition, MedicationStatement, Observation, Patient, Procedure } from 'fhir/r4';
-import convertToResearchStudy from "./researchstudy-mapping";
+  SearchBundleEntry,
+} from 'clinical-trial-matching-service';
+import {
+  Bundle,
+  Condition,
+  MedicationStatement,
+  Observation,
+  Patient,
+  Procedure,
+} from 'fhir/r4';
+import convertToSearchSetEntry from './researchstudy-mapping';
 import { LOINC_SYSTEM, SNOMED_CT_SYSTEM } from './ancora-mapping-data';
 import { AncoraCriteria, AncoraQuery } from './ancora-query';
-import { findQueryFlagsForCode, findDiseaseTypeForCode, findTumorStage } from './ancora-mappings';
+import {
+  findQueryFlagsForCode,
+  findDiseaseTypeForCode,
+  findTumorStage,
+} from './ancora-mappings';
 
 export interface AncoraAiConfiguration extends ServiceConfiguration {
   endpoint?: string;
@@ -33,9 +56,16 @@ export interface AncoraAiConfiguration extends ServiceConfiguration {
 }
 
 // Debug log - logs lots of debug information
-let debuglog: util.DebugLoggerFunction = util.debuglog('ancora', (logger) => { debuglog = logger; });
+let debuglog: util.DebugLoggerFunction = util.debuglog('ancora', (logger) => {
+  debuglog = logger;
+});
 // Query logger - logs JUST the queries sent to Ancora
-let querylog: util.DebugLoggerFunction = util.debuglog('ancora_query', (logger) => { querylog = logger; });
+let querylog: util.DebugLoggerFunction = util.debuglog(
+  'ancora_query',
+  (logger) => {
+    querylog = logger;
+  }
+);
 
 /**
  * Create a new matching function using the given configuration.
@@ -50,11 +80,11 @@ export function createAncoraAiLookup(
   ctgService?: ClinicalTrialsGovService
 ): (patientBundle: Bundle) => Promise<SearchSet> {
   // Raise errors on missing configuration
-  if (typeof configuration.endpoint !== "string") {
-    throw new Error("Missing endpoint in configuration");
+  if (typeof configuration.endpoint !== 'string') {
+    throw new Error('Missing endpoint in configuration');
   }
-  if (typeof configuration.api_key !== "string") {
-    throw new Error("Missing api_key in configuration");
+  if (typeof configuration.api_key !== 'string') {
+    throw new Error('Missing api_key in configuration');
   }
   const endpoint = configuration.endpoint;
   const apiKey = configuration.api_key;
@@ -82,9 +112,9 @@ export interface AncoraIntervention extends Record<string, string> {
 }
 
 export interface AncoraTrialArm extends Record<string, string> {
-  "arm name": string;
-  "arm type": string;
-  "arm description": string;
+  'arm name': string;
+  'arm type': string;
+  'arm description': string;
 }
 
 export interface AncoraTrialLocation extends Record<string, string> {
@@ -100,12 +130,14 @@ export interface AncoraTrialLocation extends Record<string, string> {
 }
 
 export function isAncoraTrialLocation(o: unknown): o is AncoraTrialLocation {
-  if (typeof o !== "object" || o === null) return false;
-  const location  = o as AncoraTrialLocation;
-  return typeof location.city === 'string' &&
+  if (typeof o !== 'object' || o === null) return false;
+  const location = o as AncoraTrialLocation;
+  return (
+    typeof location.city === 'string' &&
     typeof location.zip === 'string' &&
     typeof location.state === 'string' &&
-    typeof location.facility === 'string';
+    typeof location.facility === 'string'
+  );
 }
 
 export interface AncoraTrialTreatment extends Record<string, string> {
@@ -138,6 +170,7 @@ export interface AncoraTrial extends Record<string, unknown> {
   locations: Record<string, AncoraTrialLocation[]>;
   sponsor: string;
   treatments: AncoraTrialTreatment[];
+  ancora_match_score: number;
 }
 
 /**
@@ -145,14 +178,17 @@ export interface AncoraTrial extends Record<string, unknown> {
  * @param o the object to determine if it is a QueryTrial
  */
 export function isAncoraTrial(o: unknown): o is AncoraTrial {
-  if (typeof o !== "object" || o === null) return false;
+  if (typeof o !== 'object' || o === null) return false;
   const trial = o as AncoraTrial;
   // First, check the container types and reject if any of them aren't met
-  if (!(
-    Array.isArray(trial.arms) &&
-    Array.isArray(trial.treatments) &&
-    typeof trial.locations === 'object' && trial.locations !== null
-  )) {
+  if (
+    !(
+      Array.isArray(trial.arms) &&
+      Array.isArray(trial.treatments) &&
+      typeof trial.locations === 'object' &&
+      trial.locations !== null
+    )
+  ) {
     return false;
   }
   // Check to make sure locations are valid
@@ -163,7 +199,8 @@ export function isAncoraTrial(o: unknown): o is AncoraTrial {
     }
   }
   // Finally check the types of the various fields
-  return typeof trial.trial_id === 'string' &&
+  return (
+    typeof trial.trial_id === 'string' &&
     typeof trial.acronym === 'string' &&
     typeof trial.brief_title === 'string' &&
     typeof trial.date_posted === 'string' &&
@@ -179,7 +216,8 @@ export function isAncoraTrial(o: unknown): o is AncoraTrial {
     typeof trial.trial_phase === 'string' &&
     typeof trial.trial_summary === 'string' &&
     typeof trial.trial_description === 'string' &&
-    typeof trial.sponsor === 'string';
+    typeof trial.sponsor === 'string'
+  );
 }
 
 // Generic type for the response data being received from the server.
@@ -202,8 +240,8 @@ export interface QueryErrorResponse extends Record<string, unknown> {
  * @param o the object to determine if it is a QueryErrorResponse
  */
 export function isQueryErrorResponse(o: unknown): o is QueryErrorResponse {
-  if (typeof o !== "object" || o === null) return false;
-  return typeof (o as QueryErrorResponse).error === "string";
+  if (typeof o !== 'object' || o === null) return false;
+  return typeof (o as QueryErrorResponse).error === 'string';
 }
 
 // API RESPONSE SECTION
@@ -257,43 +295,46 @@ export class AncoraAPIQuery {
    * @param defaultTypeOfDisease type of disease to default to if no disease can
    *   be found within the patient data
    */
-  constructor(patientBundle: Bundle, defaultTypeOfDisease?: AncoraQuery['type_of_disease']) {
+  constructor(
+    patientBundle: Bundle,
+    defaultTypeOfDisease?: AncoraQuery['type_of_disease']
+  ) {
     // Build the internal criterions object.
     this._criterions = {};
     if (defaultTypeOfDisease) {
       this.typeOfDisease = defaultTypeOfDisease;
     }
     for (const entry of patientBundle.entry) {
-      if (!("resource" in entry)) {
+      if (!('resource' in entry)) {
         // Skip bad entries
         continue;
       }
       const resource = entry.resource;
       // Pull out search parameters
-      if (resource.resourceType === "Parameters") {
+      if (resource.resourceType === 'Parameters') {
         for (const parameter of resource.parameter) {
-          if (parameter.name === "zipCode") {
+          if (parameter.name === 'zipCode') {
             this._zipCode = parameter.valueString;
-          } else if (parameter.name === "travelRadius") {
+          } else if (parameter.name === 'travelRadius') {
             // FIXME: No mapping within Ancora at present
             this._travelRadius = parseFloat(parameter.valueString);
-          } else if (parameter.name === "phase") {
+          } else if (parameter.name === 'phase') {
             // FIXME: No mapping within Ancora at present
             this._phase = parameter.valueString;
-          } else if (parameter.name === "recruitmentStatus") {
+          } else if (parameter.name === 'recruitmentStatus') {
             // FIXME: No mapping within Ancora at present
             this._recruitmentStatus = parameter.valueString;
           }
         }
-      } else if (resource.resourceType === "Condition") {
+      } else if (resource.resourceType === 'Condition') {
         this.addCondition(resource);
-      } else if (resource.resourceType === "Observation") {
+      } else if (resource.resourceType === 'Observation') {
         this.addObservation(resource);
-      } else if (resource.resourceType === "MedicationStatement") {
+      } else if (resource.resourceType === 'MedicationStatement') {
         this.addMedicationStatement(resource);
-      } else if (resource.resourceType === "Procedure") {
+      } else if (resource.resourceType === 'Procedure') {
         this.addProcedure(resource);
-      } else if (resource.resourceType === "Patient") {
+      } else if (resource.resourceType === 'Patient') {
         this.addPatient(resource);
       }
     }
@@ -305,9 +346,14 @@ export class AncoraAPIQuery {
    * @param value the value to set the flag to, defaults to true (can also be
    *   false to indicate a negative result)
    */
-  _addCode(code: { system?: string, code?: string }, value = true): void {
+  _addCode(code: { system?: string; code?: string }, value = true): void {
     // Ignore invalid stuff sent to this
-    if (typeof code !== 'object' || code === null || typeof code.system !== 'string' || typeof code.code !== 'string') {
+    if (
+      typeof code !== 'object' ||
+      code === null ||
+      typeof code.system !== 'string' ||
+      typeof code.code !== 'string'
+    ) {
       return;
     }
     const flags = findQueryFlagsForCode(code.system, code.code);
@@ -338,9 +384,15 @@ export class AncoraAPIQuery {
     if (Array.isArray(condition.extension)) {
       // Go through the extensions
       for (const extension of condition.extension) {
-        if (extension.url === 'http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-histology-morphology-behavior') {
+        if (
+          extension.url ===
+          'http://hl7.org/fhir/us/mcode/StructureDefinition/mcode-histology-morphology-behavior'
+        ) {
           // Check if this type is recognized
-          if (extension.valueCodeableConcept && Array.isArray(extension.valueCodeableConcept.coding)) {
+          if (
+            extension.valueCodeableConcept &&
+            Array.isArray(extension.valueCodeableConcept.coding)
+          ) {
             // For now, just add the code directly
             for (const code of extension.valueCodeableConcept.coding) {
               this._addCode(code);
@@ -430,22 +482,27 @@ export class AncoraAPIQuery {
   addPatient(patient: Patient): void {
     if (patient.birthDate) {
       // For now, just parse out the date part
-      const birthDateParts = /^(\d+)(?:-(\d+)(?:-(\d+))?)?/.exec(patient.birthDate);
+      const birthDateParts = /^(\d+)(?:-(\d+)(?:-(\d+))?)?/.exec(
+        patient.birthDate
+      );
       if (birthDateParts) {
         // To avoid time zone shenanigans as much as possible (mainly, any DST
         // weirdness), parse as a UTC date
         const birthDate = new Date(
           Date.UTC(
             Number(birthDateParts[1]),
-            birthDateParts[2] === undefined ? 0 : (Number(birthDateParts[2]) - 1),
+            birthDateParts[2] === undefined ? 0 : Number(birthDateParts[2]) - 1,
             birthDateParts[3] === undefined ? 1 : Number(birthDateParts[3])
           )
         );
         const today = new Date();
         // Calculate age
         let age = today.getUTCFullYear() - birthDate.getUTCFullYear();
-        if (today.getUTCMonth() < birthDate.getUTCMonth()
-          || today.getUTCMonth() == birthDate.getUTCMonth() && today.getUTCDate() < birthDate.getUTCDate()) {
+        if (
+          today.getUTCMonth() < birthDate.getUTCMonth() ||
+          (today.getUTCMonth() == birthDate.getUTCMonth() &&
+            today.getUTCDate() < birthDate.getUTCDate())
+        ) {
           // In this case, the age is off by one, as it's before the birthdate in the current year
           age -= 1;
         }
@@ -468,14 +525,16 @@ export class AncoraAPIQuery {
    */
   toQuery(): AncoraQuery {
     if (this.typeOfDisease == null) {
-      throw new Error('No supported type of disease found within patient data, cannot generate a valid query.');
+      throw new Error(
+        'No supported type of disease found within patient data, cannot generate a valid query.'
+      );
     }
     // TODO (maybe): Clone the criterions object?
     const query: AncoraQuery = {
       // FIXME: Currently hard-coded
       country: 'US',
       criterions: this._criterions,
-      type_of_disease: this.typeOfDisease
+      type_of_disease: this.typeOfDisease,
     };
     if (this._zipCode !== null) {
       query.zip_code = this._zipCode;
@@ -488,6 +547,8 @@ export class AncoraAPIQuery {
       query.radius = this._travelRadius;
       query.radius_unit = 'MI';
     }
+
+    console.log('query', JSON.stringify(query));
     return query;
   }
 
@@ -497,7 +558,11 @@ export class AncoraAPIQuery {
    */
   toString(): string {
     if (this.typeOfDisease == null) {
-      return '[AncoraAPIQuery (invalid: no typeOfDisease, with criteria: ' + JSON.stringify(this._criterions) + ')]';
+      return (
+        '[AncoraAPIQuery (invalid: no typeOfDisease, with criteria: ' +
+        JSON.stringify(this._criterions) +
+        ')]'
+      );
     }
     return `[AncoraAPIQuery ${JSON.stringify(this.toQuery())}]`;
   }
@@ -511,31 +576,30 @@ export class AncoraAPIQuery {
  *     update the returned trials with additional information pulled from
  *     ClinicalTrials.gov
  */
-export function convertResponseToSearchSet(
+export async function convertResponseToSearchSet(
   response: AncoraResponse,
   ctgService?: ClinicalTrialsGovService
 ): Promise<SearchSet> {
   // Our final response
-  const studies: ResearchStudy[] = [];
+  const entries: SearchBundleEntry[] = [];
   // For generating IDs
   let id = 0;
   for (const trial of response) {
     if (isAncoraTrial(trial)) {
-      studies.push(convertToResearchStudy(trial, id++));
+      const entry: SearchBundleEntry = convertToSearchSetEntry(trial, id++);
+      entries.push(entry);
     } else {
       // This trial could not be understood. It can be ignored if that should
       // happen or raised/logged as an error.
       debuglog('Unable to parse trial from server: %o', trial);
     }
   }
+
   if (ctgService) {
     // If given a backup service, use it
-    return ctgService.updateResearchStudies(studies).then(() => {
-      return new SearchSet(studies);
-    });
+    return new SearchSet(await ctgService.updateSearchSetEntries(entries));
   } else {
-    // Otherwise, resolve immediately
-    return Promise.resolve(new SearchSet(studies));
+    return new SearchSet(entries);
   }
 }
 
@@ -581,12 +645,14 @@ async function sendQuery(
       return convertResponseToSearchSet(result, ctgService);
     } else if (isQueryErrorResponse(result)) {
       throw new APIError(
-          `Error from service: ${result.error}`,
-          response,
-          result
-        );
+        `Error from service: ${result.error}`,
+        response,
+        result
+      );
     } else {
-      throw new Error("Unable to parse response from server: invalid JSON object");
+      throw new Error(
+        'Unable to parse response from server: invalid JSON object'
+      );
     }
   } else {
     throw new APIError(

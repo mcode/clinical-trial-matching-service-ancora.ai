@@ -576,7 +576,7 @@ export class AncoraAPIQuery {
  *     update the returned trials with additional information pulled from
  *     ClinicalTrials.gov
  */
-export function convertResponseToSearchSet(
+export async function convertResponseToSearchSet(
   response: AncoraResponse,
   ctgService?: ClinicalTrialsGovService
 ): Promise<SearchSet> {
@@ -597,12 +597,9 @@ export function convertResponseToSearchSet(
 
   if (ctgService) {
     // If given a backup service, use it
-    return ctgService.updateSearchSetEntries(entries).then(() => {
-      return new SearchSet(entries);
-    });
+    return new SearchSet(await ctgService.updateSearchSetEntries(entries));
   } else {
-    // Otherwise, resolve immediately
-    return Promise.resolve(new SearchSet(entries));
+    return new SearchSet(entries);
   }
 }
 
